@@ -5,36 +5,16 @@
 
 // Offline Sync State
 const offlineState = {
-    isOnline: true, // هنحدده بعد الفحص الفعلي
+    isOnline: navigator.onLine,
     syncQueue: [],
     lastSync: localStorage.getItem('lastSync') || null,
     isSyncing: false
 };
 
-// فحص الاتصال الحقيقي (ping)
-async function checkRealOnlineStatus() {
-    try {
-        // نجرب نعمل fetch لـ Google (أو أي موقع ثابت)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني
-        
-        await fetch('https://www.google.com/favicon.ico', {
-            mode: 'no-cors',
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        return true;
-    } catch (error) {
-        return false;
-    }
-}
-
-// Check online status
-async function updateOnlineStatus() {
-    // نستخدم الفحص الحقيقي بدلاً من navigator.onLine فقط
-    const isReallyOnline = await checkRealOnlineStatus();
-    offlineState.isOnline = isReallyOnline;
+// Check online status (بسيط وسريع)
+function updateOnlineStatus() {
+    // نستخدم navigator.onLine كمؤشر أساسي
+    offlineState.isOnline = navigator.onLine;
     updateSyncUI();
     
     if (offlineState.isOnline) {
@@ -47,8 +27,18 @@ async function updateOnlineStatus() {
 }
 
 // Listen for online/offline events
-window.addEventListener('online', () => updateOnlineStatus());
-window.addEventListener('offline', () => updateOnlineStatus());
+window.addEventListener('online', function() {
+    offlineState.isOnline = true;
+    updateSyncUI();
+    showMessage('✓ تم الاتصال بالإنترنت');
+    syncPendingData();
+});
+
+window.addEventListener('offline', function() {
+    offlineState.isOnline = false;
+    updateSyncUI();
+    console.log('Gone offline');
+});
 
 // Queue data for sync
 function queueForSync(operation, type, data) {
@@ -244,17 +234,17 @@ function manualSync() {
 }
 
 // Initialize offline manager
-async function initOfflineManager() {
+function initOfflineManager() {
     loadSyncQueue();
-    await updateOnlineStatus(); // فحص الاتصال الحقيقي عند البداية
+    updateOnlineStatus();
     
-    // فحص دوري كل 10 ثواني (أحسن من 30 ثانية للمؤشر)
-    setInterval(async () => {
-        await updateOnlineStatus();
+    // فحص دوري كل 5 ثواني
+    setInterval(() => {
+        updateOnlineStatus();
         if (offlineState.isOnline && offlineState.syncQueue.length > 0 && !offlineState.isSyncing) {
             syncPendingData();
         }
-    }, 10000);
+    }, 5000);
 }
 
 // Override save functions to support offline
@@ -357,8 +347,8 @@ function fallbackToLocal(type, callback) {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', async function() {
-    await initOfflineManager();
+document.addEventListener('DOMContentLoaded', function() {
+    initOfflineManager();
     
     // Add sync indicator to header
     const header = document.querySelector('.main-header .header-content');
