@@ -28,6 +28,7 @@ function updateOnlineStatus() {
 
 // Listen for online/offline events
 window.addEventListener('online', function() {
+    console.log('>>> ONLINE event fired!');
     offlineState.isOnline = true;
     updateSyncUI();
     showMessage('✓ تم الاتصال بالإنترنت');
@@ -35,9 +36,9 @@ window.addEventListener('online', function() {
 });
 
 window.addEventListener('offline', function() {
+    console.log('>>> OFFLINE event fired!');
     offlineState.isOnline = false;
     updateSyncUI();
-    console.log('Gone offline');
 });
 
 // Queue data for sync
@@ -204,17 +205,20 @@ function syncDeleteFromFirebase(path, id) {
 
 // Update sync UI
 function updateSyncUI() {
+    console.log('Updating UI - isOnline:', offlineState.isOnline);
     const syncIndicator = document.getElementById('sync-indicator');
     if (syncIndicator) {
         if (!offlineState.isOnline) {
-            syncIndicator.innerHTML = '<span style="color: #ff9800;">● Offline</span>';
+            syncIndicator.innerHTML = '<span style="color: #ff5722;">● Offline</span>';
         } else if (offlineState.isSyncing) {
             syncIndicator.innerHTML = '<span style="color: #2196F3;">⟳ جاري المزامنة...</span>';
         } else if (offlineState.syncQueue.length > 0) {
-            syncIndicator.innerHTML = `<span style="color: #ff5722;">● ${offlineState.syncQueue.length} عملية معلقة</span>`;
+            syncIndicator.innerHTML = `<span style="color: #ff9800;">● ${offlineState.syncQueue.length} عملية معلقة</span>`;
         } else {
-            syncIndicator.innerHTML = '<span style="color: #4caf50;">● متزامن</span>';
+            syncIndicator.innerHTML = '<span style="color: #4caf50;">● Online</span>';
         }
+    } else {
+        console.log('Sync indicator not found!');
     }
 }
 
@@ -235,15 +239,15 @@ function manualSync() {
 
 // Initialize offline manager
 function initOfflineManager() {
+    console.log('Initializing offline manager...');
     loadSyncQueue();
     updateOnlineStatus();
+    console.log('Initial status - Online:', offlineState.isOnline);
     
     // فحص دوري كل 5 ثواني
     setInterval(() => {
+        console.log('Checking status - navigator.onLine:', navigator.onLine);
         updateOnlineStatus();
-        if (offlineState.isOnline && offlineState.syncQueue.length > 0 && !offlineState.isSyncing) {
-            syncPendingData();
-        }
     }, 5000);
 }
 
