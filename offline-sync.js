@@ -12,37 +12,43 @@ const offlineState = {
     connectionErrors: 0
 };
 
-// فحص الاتصال الحقيقي بـ Firebase
-async function checkFirebaseConnection() {
+// فحص سريع: هل Firebase متاح؟
+function checkFirebaseConnection() {
+    // بسيط: لو database موجود ومعرفش نعمل ref، يبقى Offline
     try {
-        if (!database) {
+        if (typeof database === 'undefined' || !database) {
             return false;
         }
-        
-        // نجرب نعمل ping لـ Firebase
-        await database.ref('.info/connected').once('value');
+        // نجرب نعمل ref، لو فشل يبقى Offline
+        database.ref();
         return true;
     } catch (error) {
-        console.log('Firebase connection failed:', error.message);
         return false;
     }
 }
 
-// Check online status
-async function updateOnlineStatus() {
-    // نفحص Firebase مباشرة
-    const isFirebaseConnected = await checkFirebaseConnection();
+// Check online status (سريع ومضمون)
+function updateOnlineStatus() {
+    const wasOnline = offlineState.isOnline;
     
-    // لو اتغيرت الحالة
-    if (isFirebaseConnected !== offlineState.isOnline) {
-        offlineState.isOnline = isFirebaseConnected;
+    // الفحص: هل Firebase شغال؟
+    const isFirebaseConnected = checkFirebaseConnection();
+    
+    // كمان نتأكد من navigator
+    const isBrowserOnline = navigator.onLine;
+    
+    // Offline لو: Firebase مش شغال OR Browser Offline
+    offlineState.isOnline = isFirebaseConnected && isBrowserOnline;
+    
+    // لو اتغيرت الحالة، حدث الـ UI
+    if (offlineState.isOnline !== wasOnline) {
         updateSyncUI();
         
         if (offlineState.isOnline) {
-            console.log('✓ Firebase connected - Online');
+            console.log('✓ Online');
             syncPendingData();
         } else {
-            console.log('✗ Firebase disconnected - Offline');
+            console.log('✗ Offline');
         }
     }
 }
@@ -256,16 +262,16 @@ function manualSync() {
 }
 
 // Initialize offline manager
-async function initOfflineManager() {
+function initOfflineManager() {
     console.log('Initializing offline manager...');
     loadSyncQueue();
-    await updateOnlineStatus();
+    updateOnlineStatus();
     console.log('Initial status - Online:', offlineState.isOnline);
     
-    // فحص دوري كل 10 ثواني
-    setInterval(async () => {
-        await updateOnlineStatus();
-    }, 10000);
+    // فحص دوري كل 5 ثواني
+    setInterval(() => {
+        updateOnlineStatus();
+    }, 5000);
 }
 
 // Override save functions to support offline
@@ -368,8 +374,8 @@ function fallbackToLocal(type, callback) {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', async function() {
-    await initOfflineManager();
+document.addEventListener('DOMContentLoaded', function() {
+    initOfflineManager();
     
     // Add sync indicator to header
     const header = document.querySelector('.main-header .header-content');
@@ -377,7 +383,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const syncDiv = document.createElement('div');
         syncDiv.id = 'sync-indicator';
         syncDiv.style.cssText = 'margin-right: 15px; font-size: 12px; font-weight: bold;';
-        syncDiv.innerHTML = '<span style="color: #ff9800;">⟳ جاري الفحص...</span>';
+        syncDiv.innerHTML = '<span style="color: #2196F3;">⟳ جاري التحميل...</span>';
         
         const userInfo = header.querySelector('.user-info');
         if (userInfo) {
