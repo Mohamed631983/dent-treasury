@@ -222,16 +222,16 @@ document.addEventListener('scroll', resetInactivityTimer);
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const firebaseInitialized = initFirebase();
-        if (!firebaseInitialized) {
-            showMessage('فشل في تهيئة Firebase. تأكد من الإعدادات');
-            return;
+        if (firebaseInitialized) {
+            console.log('Firebase initialized successfully');
+            
+            // إنشاء Admin افتراضي بعد ثانية واحدة
+            setTimeout(() => {
+                createDefaultAdminIfNeeded();
+            }, 1000);
+        } else {
+            console.log('Firebase not available - working in offline mode');
         }
-        console.log('Firebase initialized successfully');
-        
-        // إنشاء Admin افتراضي بعد ثانية واحدة
-        setTimeout(() => {
-            createDefaultAdminIfNeeded();
-        }, 1000);
         
         setupEventListeners();
         checkLoginStatus();
@@ -239,7 +239,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setupRealtimeListeners();
     } catch (error) {
         console.error('Error initializing app:', error);
-        showMessage('حدث خطأ في تهيئة التطبيق: ' + error.message);
+        // مش هنعرض رسالة خطأ عشان يشتغل Offline
+        console.log('Continuing in offline mode...');
+        
+        setupEventListeners();
+        checkLoginStatus();
+        updateDateInputs();
     }
 });
 
