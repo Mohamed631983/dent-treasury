@@ -58,8 +58,8 @@ const firebaseConfig = {
     projectId: "dent-treasury-system",
     storageBucket: "dent-treasury-system.firebasestorage.app",
     messagingSenderId: "441456294766",
-    appId: "1:441456294766:web:bbe2027f999bda44051f7f",
-    measurementId: "G-FVF4BJQPNB"
+  appId: "1:441456294766:web:9b1e6e0084801f8b051f7f",
+    measurementId: "G-T60N8Y3SW1"
 };
 
 // Initialize Firebase
