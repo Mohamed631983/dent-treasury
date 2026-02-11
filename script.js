@@ -67,6 +67,13 @@ let app, auth, database;
 
 function initFirebase() {
     try {
+        // التحقق من وجود Firebase
+        if (typeof firebase === 'undefined') {
+            console.warn('Firebase not available - working in offline mode');
+            database = null;
+            return false;
+        }
+        
         if (!firebase.apps.length) {
             app = firebase.initializeApp(firebaseConfig);
         } else {
@@ -78,13 +85,18 @@ function initFirebase() {
         return true;
     } catch (error) {
         console.error('Firebase initialization error:', error);
-        alert('خطأ في تهيئة Firebase: ' + error.message);
+        // مش هنعمل alert عشان يشتغل Offline
+        database = null;
         return false;
     }
 }
 
 // Firebase Database References
 function getDbRef(path) {
+    if (!database) {
+        console.warn('Database not available - offline mode');
+        return null;
+    }
     return database.ref(path);
 }
 
@@ -94,6 +106,13 @@ function getDbRef(path) {
 function saveToFirebase(path, data, callback) {
     console.log('Saving to Firebase path:', path, 'Data:', data);
     const ref = getDbRef(path);
+    
+    if (!ref) {
+        console.warn('Firebase not available - data saved locally only');
+        if (callback) callback(null, 'local_' + Date.now());
+        return;
+    }
+    
     ref.push(data)
         .then((snapshot) => {
             console.log('Saved successfully with key:', snapshot.key);
@@ -108,6 +127,13 @@ function saveToFirebase(path, data, callback) {
 // تحديث البيانات في Firebase
 function updateInFirebase(path, data, callback) {
     const ref = getDbRef(path);
+    
+    if (!ref) {
+        console.warn('Firebase not available - updated locally only');
+        if (callback) callback(null);
+        return;
+    }
+    
     ref.update(data)
         .then(() => {
             if (callback) callback(null);
@@ -121,6 +147,13 @@ function updateInFirebase(path, data, callback) {
 // حذف من Firebase
 function deleteFromFirebase(path, callback) {
     const ref = getDbRef(path);
+    
+    if (!ref) {
+        console.warn('Firebase not available - deleted locally only');
+        if (callback) callback(null);
+        return;
+    }
+    
     ref.remove()
         .then(() => {
             if (callback) callback(null);
@@ -134,6 +167,12 @@ function deleteFromFirebase(path, callback) {
 // الاستماع للتغييرات في الوقت الفعلي
 function listenToFirebase(path, callback) {
     const ref = getDbRef(path);
+    
+    if (!ref) {
+        console.warn('Firebase not available - real-time updates disabled');
+        return;
+    }
+    
     ref.on('value', (snapshot) => {
         const data = snapshot.val();
         if (callback) callback(data);
@@ -143,6 +182,13 @@ function listenToFirebase(path, callback) {
 // الحصول على البيانات مرة واحدة
 function getFromFirebase(path, callback) {
     const ref = getDbRef(path);
+    
+    if (!ref) {
+        console.warn('Firebase not available - using local data only');
+        if (callback) callback(null, null);
+        return;
+    }
+    
     ref.once('value')
         .then((snapshot) => {
             if (callback) callback(null, snapshot.val());
