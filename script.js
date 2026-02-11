@@ -1035,44 +1035,54 @@ function finishSaveUnjustified(paymentData, isPrint) {
 
 // Update Names List
 function updateNamesList() {
-    // Load names from Firebase instead of localStorage
-    getFromFirebase('names', (error, data) => {
-        let names = [];
-        if (!error && data) {
-            names = Object.values(data).map(item => item.name);
-        }
-        
-        const cashList = document.getElementById('names-list');
-        const unjustifiedList = document.getElementById('unjustified-names-list');
-        
-        // Limit to last 50 names for performance
-        const limitedNames = names.slice(-50);
-        
-        if (cashList) {
-            cashList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
-        }
-        if (unjustifiedList) {
-            unjustifiedList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+    let names = [];
+    
+    // من LocalStorage (الأسماء المحفوظة)
+    const savedNames = JSON.parse(localStorage.getItem(DB_KEYS.NAMES_LIST) || '[]');
+    names = [...savedNames];
+    
+    // من الإيصالات المخزنة
+    const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
+    receipts.forEach(r => {
+        if (r.payerName && !names.includes(r.payerName)) {
+            names.push(r.payerName);
         }
     });
+    
+    // من المدفوعات المخزنة
+    const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
+    payments.forEach(p => {
+        if (p.name && !names.includes(p.name)) {
+            names.push(p.name);
+        }
+    });
+    
+    // إزالة التكرار وترتيب
+    names = [...new Set(names)].sort();
+    
+    // أخذ آخر 10 أسماء (الأحدث)
+    const limitedNames = names.slice(-10);
+    
+    const cashList = document.getElementById('names-list');
+    const unjustifiedList = document.getElementById('unjustified-names-list');
+    
+    if (cashList) {
+        cashList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+    }
+    if (unjustifiedList) {
+        unjustifiedList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+    }
 }
 
 function updateNamesListWithName(name) {
-    // حفظ الاسم في Firebase
-    getFromFirebase('names', (error, data) => {
-        let names = [];
-        if (!error && data) {
-            names = Object.values(data).map(item => item.name);
-        }
-        
-        if (!names.includes(name)) {
-            saveToFirebase('names', { name: name, createdAt: new Date().toISOString() }, (err) => {
-                if (!err) {
-                    loadNamesFromFirebase();
-                }
-            });
-        }
-    });
+    // حفظ الاسم في LocalStorage (مش Firebase)
+    let names = JSON.parse(localStorage.getItem(DB_KEYS.NAMES_LIST) || '[]');
+    
+    if (!names.includes(name)) {
+        names.push(name);
+        localStorage.setItem(DB_KEYS.NAMES_LIST, JSON.stringify(names));
+        updateNamesList(); // تحديث القائمة فوراً
+    }
 }
 
 // Load Database - Firebase Version
