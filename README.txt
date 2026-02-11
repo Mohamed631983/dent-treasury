@@ -87,32 +87,6 @@ offline-version/
 - انقل الملف للجهاز التاني
 - اعمل Import
 
-## تعديلات Firebase Rules
-
-افتح Firebase Console وغير Rules لـ:
-
-```json
-{
-  "rules": {
-    ".read": true,
-    ".write": true
-  }
-}
-```
-
-أو حط تاريخ بعيد:
-
-```json
-{
-  "rules": {
-    ".read": "now < 1893456000000",
-    ".write": "now < 1893456000000"
-  }
-}
-```
-
-(التاريخ ده: 1 يناير 2030)
-
 ## دعم فني
 
 لو عندك مشكلة:
