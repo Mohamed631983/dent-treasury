@@ -430,22 +430,86 @@ function setupEventListeners() {
     document.getElementById('confirm-no').addEventListener('click', closeAllModals);
     
     // البحث في الأسماء - بيان استلام نقدية
-    const payerNameInput = document.getElementById('payer-name');
-    if (payerNameInput) {
-        payerNameInput.addEventListener('input', (e) => {
-            const suggestions = searchNames(e.target.value);
-            showNameSuggestions(payerNameInput, suggestions);
-        });
-    }
+    setupNameSearch('payer-name');
     
     // البحث في الأسماء - مبالغ بدون وجه حق
-    const unjustifiedNameInput = document.getElementById('unjustified-name');
-    if (unjustifiedNameInput) {
-        unjustifiedNameInput.addEventListener('input', (e) => {
-            const suggestions = searchNames(e.target.value);
-            showNameSuggestions(unjustifiedNameInput, suggestions);
+    setupNameSearch('unjustified-name');
+}
+
+// إعداد البحث في الأسماء
+function setupNameSearch(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // إزالة القائمة القديمة
+        const oldList = document.getElementById('suggestions-' + inputId);
+        if (oldList) oldList.remove();
+        
+        // لو أقل من حرفين، مفيش بحث
+        if (query.length < 2) return;
+        
+        // جلب الأسماء من قاعدة البيانات
+        let allNames = [];
+        const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
+        const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
+        
+        receipts.forEach(r => { if (r.payerName) allNames.push(r.payerName); });
+        payments.forEach(p => { if (p.name) allNames.push(p.name); });
+        
+        // إزالة التكرار
+        allNames = [...new Set(allNames)];
+        
+        // البحث
+        const matches = allNames.filter(name => 
+            name.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 5);
+        
+        if (matches.length === 0) return;
+        
+        // إنشاء قائمة الاقتراحات
+        const list = document.createElement('div');
+        list.id = 'suggestions-' + inputId;
+        list.style.cssText = `
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 9999;
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            margin-top: 2px;
+        `;
+        
+        matches.forEach(name => {
+            const div = document.createElement('div');
+            div.textContent = name;
+            div.style.cssText = 'padding: 8px; cursor: pointer; border-bottom: 1px solid #eee;';
+            div.onclick = function() {
+                input.value = name;
+                list.remove();
+            };
+            div.onmouseover = function() { this.style.background = '#f0f0f0'; };
+            div.onmouseout = function() { this.style.background = 'white'; };
+            list.appendChild(div);
         });
-    }
+        
+        // وضع القائمة
+        input.parentNode.style.position = 'relative';
+        input.parentNode.appendChild(list);
+        
+        // إخفاء لما نضغط برا
+        document.addEventListener('click', function hide(e) {
+            if (e.target !== input && !list.contains(e.target)) {
+                list.remove();
+                document.removeEventListener('click', hide);
+            }
+        });
+    });
 }
 
 // Update Date Inputs to Today
@@ -1051,108 +1115,8 @@ function finishSaveUnjustified(paymentData, isPrint) {
     editingType = null;
 }
 
-// الحصول على كل الأسماء من قاعدة البيانات
-function getAllNamesFromDatabase() {
-    let names = [];
-    
-    // من الإيصالات
-    const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
-    receipts.forEach(r => {
-        if (r.payerName && !names.includes(r.payerName)) {
-            names.push(r.payerName);
-        }
-    });
-    
-    // من المدفوعات
-    const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
-    payments.forEach(p => {
-        if (p.name && !names.includes(p.name)) {
-            names.push(p.name);
-        }
-    });
-    
-    return [...new Set(names)].sort();
-}
-
-// البحث في الأسماء
-function searchNames(query) {
-    if (!query || query.length < 2) return []; // لازم 2 حروف على الأقل
-    
-    const allNames = getAllNamesFromDatabase();
-    const lowerQuery = query.toLowerCase();
-    
-    return allNames.filter(name => 
-        name.toLowerCase().includes(lowerQuery)
-    ).slice(0, 5); // أقصى 5 نتائج
-}
-
-// إظهار اقتراحات البحث
-function showNameSuggestions(inputElement, suggestions) {
-    // إزالة القائمة القديمة لو موجودة
-    let existingList = document.getElementById('name-suggestions-list');
-    if (existingList) {
-        existingList.remove();
-    }
-    
-    if (suggestions.length === 0) return;
-    
-    // إنشاء قائمة جديدة
-    const list = document.createElement('div');
-    list.id = 'name-suggestions-list';
-    list.style.cssText = `
-        position: absolute;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        max-height: 200px;
-        overflow-y: auto;
-        z-index: 1000;
-        width: ${inputElement.offsetWidth}px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    `;
-    
-    suggestions.forEach(name => {
-        const item = document.createElement('div');
-        item.textContent = name;
-        item.style.cssText = `
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        `;
-        item.addEventListener('mouseover', () => {
-            item.style.background = '#f0f0f0';
-        });
-        item.addEventListener('mouseout', () => {
-            item.style.background = 'white';
-        });
-        item.addEventListener('click', () => {
-            inputElement.value = name;
-            list.remove();
-        });
-        list.appendChild(item);
-    });
-    
-    // وضع القائمة تحت الحقل
-    const rect = inputElement.getBoundingClientRect();
-    list.style.top = (rect.bottom + window.scrollY) + 'px';
-    list.style.left = (rect.left + window.scrollX) + 'px';
-    
-    document.body.appendChild(list);
-    
-    // إخفاء القائمة لما نضغط برا
-    setTimeout(() => {
-        document.addEventListener('click', function hideList(e) {
-            if (!list.contains(e.target) && e.target !== inputElement) {
-                list.remove();
-                document.removeEventListener('click', hideList);
-            }
-        });
-    }, 100);
-}
-
 function updateNamesListWithName(name) {
-    // مش محتاجين نعمل حاجة هنا - البحث بيعتمد على قاعدة البيانات مباشرة
-    // الاسم هيتضاف لوحده لما نحفظ
+    // مش محتاجين نعمل حاجة - البحث بيجيب من قاعدة البيانات مباشرة
 }
 
 // Load Database - Firebase Version
