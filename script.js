@@ -428,6 +428,9 @@ function setupEventListeners() {
     // Confirm Modal
     document.getElementById('confirm-yes').addEventListener('click', handleConfirmYes);
     document.getElementById('confirm-no').addEventListener('click', closeAllModals);
+    
+    // تحميل الأسماء في القائمة المنسدلة
+    updateNamesList();
 }
 
 // Update Date Inputs to Today
@@ -1033,13 +1036,9 @@ function finishSaveUnjustified(paymentData, isPrint) {
     editingType = null;
 }
 
-// Update Names List
+// Update Names List - من قاعدة البيانات فقط
 function updateNamesList() {
     let names = [];
-    
-    // من LocalStorage (الأسماء المحفوظة)
-    const savedNames = JSON.parse(localStorage.getItem(DB_KEYS.NAMES_LIST) || '[]');
-    names = [...savedNames];
     
     // من الإيصالات المخزنة
     const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
@@ -1060,17 +1059,14 @@ function updateNamesList() {
     // إزالة التكرار وترتيب
     names = [...new Set(names)].sort();
     
-    // أخذ آخر 10 أسماء (الأحدث)
-    const limitedNames = names.slice(-10);
-    
     const cashList = document.getElementById('names-list');
     const unjustifiedList = document.getElementById('unjustified-names-list');
     
     if (cashList) {
-        cashList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+        cashList.innerHTML = names.map(name => `<option value="${name}">`).join('');
     }
     if (unjustifiedList) {
-        unjustifiedList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+        unjustifiedList.innerHTML = names.map(name => `<option value="${name}">`).join('');
     }
 }
 
