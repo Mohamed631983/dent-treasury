@@ -12,20 +12,20 @@ const SYSTEM_CONFIG = {
         role: 'admin',
         permissions: ['edit', 'delete', 'import', 'export', 'print']
     },
-    SESSION_TIMEOUT: 30 * 60 * 1000, // 30 دقيقة
-    SYNC_INTERVAL: 30 * 1000 // 30 ثانية
+    SESSION_TIMEOUT: 30 * 60 * 1000 // 30 دقيقة
 };
 
 // مفاتيح التخزين
 const AUTH_KEYS = {
     USERS: 'offline_users',
     CURRENT_USER: 'offline_current_user',
-    SESSION_START: 'offline_session_start',
-    PENDING_SYNC: 'offline_pending_sync'
+    SESSION_START: 'offline_session_start'
 };
 
 // تهيئة النظام
 function initOfflineAuth() {
+    console.log('Initializing offline auth...');
+    
     // إنشاء Admin افتراضي لو مفيش
     if (!localStorage.getItem(AUTH_KEYS.USERS)) {
         createDefaultAdmin();
@@ -34,19 +34,16 @@ function initOfflineAuth() {
     // بدء مراقبة النشاط
     startInactivityMonitor();
     
-    // محاولة مزامنة أولية
-    if (navigator.onLine) {
-        syncUsersWithFirebase();
-    }
+    console.log('Offline auth initialized');
 }
 
 // إنشاء Admin افتراضي
 function createDefaultAdmin() {
+    console.log('Creating default admin...');
     const admin = {
         ...SYSTEM_CONFIG.DEFAULT_ADMIN,
         id: 'admin_' + Date.now(),
-        createdAt: new Date().toISOString(),
-        synced: false
+        createdAt: new Date().toISOString()
     };
     
     const users = [admin];
@@ -54,8 +51,10 @@ function createDefaultAdmin() {
     console.log('Default admin created');
 }
 
-// تسجيل دخول Offline
+// تسجيل دخول Offline (غير معتمد على Firebase)
 function offlineLogin(username, password) {
+    console.log('Attempting offline login for:', username);
+    
     const users = JSON.parse(localStorage.getItem(AUTH_KEYS.USERS) || '[]');
     
     const user = users.find(u => 
@@ -72,6 +71,14 @@ function offlineLogin(username, password) {
         resetInactivityTimer();
         
         console.log('Offline login successful:', user.username);
+        
+        // محاولة مزامنة إذا كان Online و Firebase متاح
+        if (navigator.onLine && typeof database !== 'undefined' && database) {
+            syncUsersWithFirebase().catch(err => {
+                console.log('Sync not critical, continuing...');
+            });
+        }
+        
         return { success: true, user };
     }
     
@@ -90,15 +97,16 @@ function addOfflineUser(userData) {
     const newUser = {
         ...userData,
         id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        synced: false
+        createdAt: new Date().toISOString()
     };
     
     users.push(newUser);
     localStorage.setItem(AUTH_KEYS.USERS, JSON.stringify(users));
     
-    // إضافة للمزامنة
-    queueForSync('add_user', newUser);
+    // مزامنة إذا كان متاح
+    if (navigator.onLine && typeof database !== 'undefined' && database) {
+        saveUserToFirebase(newUser).catch(() => {});
+    }
     
     console.log('User added offline:', newUser.username);
     return { success: true, user: newUser };
@@ -119,9 +127,6 @@ function deleteOfflineUser(userId) {
     
     users = users.filter(u => u.id !== userId);
     localStorage.setItem(AUTH_KEYS.USERS, JSON.stringify(users));
-    
-    // إضافة للمزامنة
-    queueForSync('delete_user', { id: userId });
     
     console.log('User deleted offline:', userId);
     return { success: true };
@@ -158,48 +163,37 @@ function resetInactivityTimer() {
     }
 }
 
-// مزامنة المستخدمين مع Firebase
+// مزامنة المستخدمين مع Firebase (اختيارية)
 async function syncUsersWithFirebase() {
-    if (!navigator.onLine || !database) return;
+    if (!navigator.onLine || typeof database === 'undefined' || !database) {
+        return;
+    }
     
     console.log('Syncing users with Firebase...');
     
-    const localUsers = getOfflineUsers();
-    
     try {
+        const localUsers = getOfflineUsers();
+        
         // رفع المستخدمين المحليين لـ Firebase
         for (const user of localUsers) {
-            if (!user.synced) {
-                await saveUserToFirebase(user);
-                user.synced = true;
-            }
+            await saveUserToFirebase(user);
         }
         
-        // تحميل المستخدمين من Firebase
-        const snapshot = await database.ref('users').once('value');
-        const firebaseUsers = snapshot.val();
-        
-        if (firebaseUsers) {
-            const remoteUsers = Object.values(firebaseUsers);
-            
-            // دمج القوائم (المحلي له الأولوية لو متغير)
-            const mergedUsers = mergeUsers(localUsers, remoteUsers);
-            
-            localStorage.setItem(AUTH_KEYS.USERS, JSON.stringify(mergedUsers));
-            console.log('Users synced successfully');
-        }
-        
+        console.log('Users synced successfully');
     } catch (error) {
-        console.error('Error syncing users:', error);
+        console.error('Sync error:', error);
     }
 }
 
 // حفظ مستخدم في Firebase
 async function saveUserToFirebase(user) {
     return new Promise((resolve, reject) => {
-        const usersRef = database.ref('users');
+        if (typeof database === 'undefined' || !database) {
+            reject(new Error('Database not available'));
+            return;
+        }
         
-        // البحث عن المستخدم أولاً
+        const usersRef = database.ref('users');
         usersRef.once('value')
             .then(snapshot => {
                 const data = snapshot.val();
@@ -214,10 +208,8 @@ async function saveUserToFirebase(user) {
                 }
                 
                 if (existingKey) {
-                    // تحديث
                     return usersRef.child(existingKey).update(user);
                 } else {
-                    // إضافة جديد
                     return usersRef.push(user);
                 }
             })
@@ -226,24 +218,8 @@ async function saveUserToFirebase(user) {
     });
 }
 
-// دمج قائمة المستخدمين
-function mergeUsers(localUsers, remoteUsers) {
-    const merged = [...localUsers];
-    
-    for (const remote of remoteUsers) {
-        const existing = merged.find(u => u.username === remote.username);
-        if (!existing) {
-            merged.push({ ...remote, synced: true });
-        }
-    }
-    
-    return merged;
-}
-
-// تعديل دالة handleLogin الأصلية
-const originalHandleLogin = window.handleLogin || function() {};
-
-window.handleLogin = async function(e) {
+// دالة تسجيل الدخول الرئيسية (تستبدل القديمة)
+function handleOfflineLogin(e) {
     e.preventDefault();
     
     const username = document.getElementById('username').value.trim();
@@ -261,42 +237,45 @@ window.handleLogin = async function(e) {
     const result = offlineLogin(username, password);
     
     if (result.success) {
-        // محاولة مزامنة إذا كان Online
-        if (navigator.onLine && database) {
-            try {
-                await syncUsersWithFirebase();
-            } catch (error) {
-                console.log('Sync failed, continuing offline');
-            }
-        }
-        
         showMainPage();
         updateUserDisplay();
+        btn.disabled = false;
+        loadingDiv.style.display = 'none';
     } else {
         errorDiv.textContent = result.error;
         errorDiv.style.display = 'block';
+        btn.disabled = false;
+        loadingDiv.style.display = 'none';
     }
-    
-    btn.disabled = false;
-    loadingDiv.style.display = 'none';
-};
+}
 
 // تهيئة النظام عند التحميل
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - setting up offline auth');
+    
+    // تهيئة النظام
     initOfflineAuth();
+    
+    // استبدال event listener القديم
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        // إزالة المعالجات القديمة
+        const newLoginForm = loginForm.cloneNode(true);
+        loginForm.parentNode.replaceChild(newLoginForm, loginForm);
+        
+        // إضافة المعالج الجديد
+        newLoginForm.addEventListener('submit', handleOfflineLogin);
+    }
     
     // التحقق من وجود جلسة سابقة
     const savedSession = localStorage.getItem(AUTH_KEYS.CURRENT_USER);
     if (savedSession) {
-        currentUser = JSON.parse(savedSession);
-        showMainPage();
-        updateUserDisplay();
+        try {
+            currentUser = JSON.parse(savedSession);
+            showMainPage();
+            updateUserDisplay();
+        } catch (e) {
+            console.error('Error restoring session:', e);
+        }
     }
 });
-
-// مزامنة دورية
-setInterval(() => {
-    if (navigator.onLine && currentUser) {
-        syncUsersWithFirebase();
-    }
-}, SYSTEM_CONFIG.SYNC_INTERVAL);
