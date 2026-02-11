@@ -42,7 +42,7 @@ async function updateOnlineStatus() {
         syncPendingData();
     } else {
         console.log('Gone offline - using local storage only');
-        showMessage('النت فصل - العمل مستمر Offline');
+        // مش هنظهر رسالة عشان متزعجش المستخدم
     }
 }
 
