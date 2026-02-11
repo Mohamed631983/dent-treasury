@@ -429,31 +429,9 @@ function setupEventListeners() {
     document.getElementById('confirm-yes').addEventListener('click', handleConfirmYes);
     document.getElementById('confirm-no').addEventListener('click', closeAllModals);
     
-    // البحث في الأسماء - بيان استلام نقدية
-    setupNameSearch('payer-name');
-    
-    // البحث في الأسماء - مبالغ بدون وجه حق
-    setupNameSearch('unjustified-name');
+    // تحميل قائمة الأسماء
+    updateNamesList();
 }
-
-// إعداد البحث في الأسماء
-function setupNameSearch(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    
-    input.addEventListener('input', function() {
-        const query = this.value.trim();
-        
-        // إزالة القائمة القديمة
-        const oldList = document.getElementById('suggestions-' + inputId);
-        if (oldList) oldList.remove();
-        
-        // لو أقل من حرفين، مفيش بحث
-        if (query.length < 2) return;
-        
-        // جلب الأسماء من قاعدة البيانات
-        let allNames = [];
-        const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
         const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
         
         receipts.forEach(r => { if (r.payerName) allNames.push(r.payerName); });
@@ -1116,7 +1094,48 @@ function finishSaveUnjustified(paymentData, isPrint) {
 }
 
 function updateNamesListWithName(name) {
-    // مش محتاجين نعمل حاجة - البحث بيجيب من قاعدة البيانات مباشرة
+    // حفظ الاسم في LocalStorage
+    let names = JSON.parse(localStorage.getItem(DB_KEYS.NAMES_LIST) || '[]');
+    if (!names.includes(name)) {
+        names.push(name);
+        localStorage.setItem(DB_KEYS.NAMES_LIST, JSON.stringify(names));
+    }
+}
+
+// تحديث قائمة الأسماء في datalist
+function updateNamesList() {
+    // جلب الأسماء من قاعدة البيانات
+    let names = [];
+    
+    // من الإيصالات
+    const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
+    receipts.forEach(r => {
+        if (r.payerName && !names.includes(r.payerName)) {
+            names.push(r.payerName);
+        }
+    });
+    
+    // من المدفوعات
+    const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
+    payments.forEach(p => {
+        if (p.name && !names.includes(p.name)) {
+            names.push(p.name);
+        }
+    });
+    
+    // إزالة التكرار وترتيب
+    names = [...new Set(names)].sort();
+    
+    // تحديث القوائم
+    const cashList = document.getElementById('names-list');
+    const unjustifiedList = document.getElementById('unjustified-names-list');
+    
+    if (cashList) {
+        cashList.innerHTML = names.map(name => `<option value="${name}">`).join('');
+    }
+    if (unjustifiedList) {
+        unjustifiedList.innerHTML = names.map(name => `<option value="${name}">`).join('');
+    }
 }
 
 // Load Database - Firebase Version
