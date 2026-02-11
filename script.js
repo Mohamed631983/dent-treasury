@@ -429,8 +429,23 @@ function setupEventListeners() {
     document.getElementById('confirm-yes').addEventListener('click', handleConfirmYes);
     document.getElementById('confirm-no').addEventListener('click', closeAllModals);
     
-    // تحميل الأسماء في القائمة المنسدلة
-    updateNamesList();
+    // البحث في الأسماء - بيان استلام نقدية
+    const payerNameInput = document.getElementById('payer-name');
+    if (payerNameInput) {
+        payerNameInput.addEventListener('input', (e) => {
+            const suggestions = searchNames(e.target.value);
+            showNameSuggestions(payerNameInput, suggestions);
+        });
+    }
+    
+    // البحث في الأسماء - مبالغ بدون وجه حق
+    const unjustifiedNameInput = document.getElementById('unjustified-name');
+    if (unjustifiedNameInput) {
+        unjustifiedNameInput.addEventListener('input', (e) => {
+            const suggestions = searchNames(e.target.value);
+            showNameSuggestions(unjustifiedNameInput, suggestions);
+        });
+    }
 }
 
 // Update Date Inputs to Today
@@ -1036,11 +1051,11 @@ function finishSaveUnjustified(paymentData, isPrint) {
     editingType = null;
 }
 
-// Update Names List - من قاعدة البيانات فقط
-function updateNamesList() {
+// الحصول على كل الأسماء من قاعدة البيانات
+function getAllNamesFromDatabase() {
     let names = [];
     
-    // من الإيصالات المخزنة
+    // من الإيصالات
     const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
     receipts.forEach(r => {
         if (r.payerName && !names.includes(r.payerName)) {
@@ -1048,7 +1063,7 @@ function updateNamesList() {
         }
     });
     
-    // من المدفوعات المخزنة
+    // من المدفوعات
     const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
     payments.forEach(p => {
         if (p.name && !names.includes(p.name)) {
@@ -1056,29 +1071,88 @@ function updateNamesList() {
         }
     });
     
-    // إزالة التكرار وترتيب
-    names = [...new Set(names)].sort();
+    return [...new Set(names)].sort();
+}
+
+// البحث في الأسماء
+function searchNames(query) {
+    if (!query || query.length < 2) return []; // لازم 2 حروف على الأقل
     
-    const cashList = document.getElementById('names-list');
-    const unjustifiedList = document.getElementById('unjustified-names-list');
+    const allNames = getAllNamesFromDatabase();
+    const lowerQuery = query.toLowerCase();
     
-    if (cashList) {
-        cashList.innerHTML = names.map(name => `<option value="${name}">`).join('');
+    return allNames.filter(name => 
+        name.toLowerCase().includes(lowerQuery)
+    ).slice(0, 5); // أقصى 5 نتائج
+}
+
+// إظهار اقتراحات البحث
+function showNameSuggestions(inputElement, suggestions) {
+    // إزالة القائمة القديمة لو موجودة
+    let existingList = document.getElementById('name-suggestions-list');
+    if (existingList) {
+        existingList.remove();
     }
-    if (unjustifiedList) {
-        unjustifiedList.innerHTML = names.map(name => `<option value="${name}">`).join('');
-    }
+    
+    if (suggestions.length === 0) return;
+    
+    // إنشاء قائمة جديدة
+    const list = document.createElement('div');
+    list.id = 'name-suggestions-list';
+    list.style.cssText = `
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        width: ${inputElement.offsetWidth}px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    `;
+    
+    suggestions.forEach(name => {
+        const item = document.createElement('div');
+        item.textContent = name;
+        item.style.cssText = `
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        `;
+        item.addEventListener('mouseover', () => {
+            item.style.background = '#f0f0f0';
+        });
+        item.addEventListener('mouseout', () => {
+            item.style.background = 'white';
+        });
+        item.addEventListener('click', () => {
+            inputElement.value = name;
+            list.remove();
+        });
+        list.appendChild(item);
+    });
+    
+    // وضع القائمة تحت الحقل
+    const rect = inputElement.getBoundingClientRect();
+    list.style.top = (rect.bottom + window.scrollY) + 'px';
+    list.style.left = (rect.left + window.scrollX) + 'px';
+    
+    document.body.appendChild(list);
+    
+    // إخفاء القائمة لما نضغط برا
+    setTimeout(() => {
+        document.addEventListener('click', function hideList(e) {
+            if (!list.contains(e.target) && e.target !== inputElement) {
+                list.remove();
+                document.removeEventListener('click', hideList);
+            }
+        });
+    }, 100);
 }
 
 function updateNamesListWithName(name) {
-    // حفظ الاسم في LocalStorage (مش Firebase)
-    let names = JSON.parse(localStorage.getItem(DB_KEYS.NAMES_LIST) || '[]');
-    
-    if (!names.includes(name)) {
-        names.push(name);
-        localStorage.setItem(DB_KEYS.NAMES_LIST, JSON.stringify(names));
-        updateNamesList(); // تحديث القائمة فوراً
-    }
+    // مش محتاجين نعمل حاجة هنا - البحث بيعتمد على قاعدة البيانات مباشرة
+    // الاسم هيتضاف لوحده لما نحفظ
 }
 
 // Load Database - Firebase Version
