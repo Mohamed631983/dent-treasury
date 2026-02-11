@@ -5,38 +5,56 @@
 
 // Offline Sync State
 const offlineState = {
-    isOnline: navigator.onLine,
+    isOnline: true, // نفترض Online في البداية
     syncQueue: [],
     lastSync: localStorage.getItem('lastSync') || null,
-    isSyncing: false
+    isSyncing: false,
+    connectionErrors: 0
 };
 
-// Check online status (بسيط وسريع)
-function updateOnlineStatus() {
-    // نستخدم navigator.onLine كمؤشر أساسي
-    offlineState.isOnline = navigator.onLine;
-    updateSyncUI();
-    
-    if (offlineState.isOnline) {
-        console.log('Back online - starting sync...');
-        syncPendingData();
-    } else {
-        console.log('Gone offline - using local storage only');
-        // مش هنظهر رسالة عشان متزعجش المستخدم
+// فحص الاتصال الحقيقي بـ Firebase
+async function checkFirebaseConnection() {
+    try {
+        if (!database) {
+            return false;
+        }
+        
+        // نجرب نعمل ping لـ Firebase
+        await database.ref('.info/connected').once('value');
+        return true;
+    } catch (error) {
+        console.log('Firebase connection failed:', error.message);
+        return false;
     }
 }
 
-// Listen for online/offline events
+// Check online status
+async function updateOnlineStatus() {
+    // نفحص Firebase مباشرة
+    const isFirebaseConnected = await checkFirebaseConnection();
+    
+    // لو اتغيرت الحالة
+    if (isFirebaseConnected !== offlineState.isOnline) {
+        offlineState.isOnline = isFirebaseConnected;
+        updateSyncUI();
+        
+        if (offlineState.isOnline) {
+            console.log('✓ Firebase connected - Online');
+            syncPendingData();
+        } else {
+            console.log('✗ Firebase disconnected - Offline');
+        }
+    }
+}
+
+// Listen for browser online/offline events (كاحتياطي)
 window.addEventListener('online', function() {
-    console.log('>>> ONLINE event fired!');
-    offlineState.isOnline = true;
-    updateSyncUI();
-    showMessage('✓ تم الاتصال بالإنترنت');
-    syncPendingData();
+    console.log('Browser says online, checking Firebase...');
+    setTimeout(updateOnlineStatus, 1000);
 });
 
 window.addEventListener('offline', function() {
-    console.log('>>> OFFLINE event fired!');
+    console.log('Browser says offline');
     offlineState.isOnline = false;
     updateSyncUI();
 });
@@ -238,17 +256,16 @@ function manualSync() {
 }
 
 // Initialize offline manager
-function initOfflineManager() {
+async function initOfflineManager() {
     console.log('Initializing offline manager...');
     loadSyncQueue();
-    updateOnlineStatus();
+    await updateOnlineStatus();
     console.log('Initial status - Online:', offlineState.isOnline);
     
-    // فحص دوري كل 5 ثواني
-    setInterval(() => {
-        console.log('Checking status - navigator.onLine:', navigator.onLine);
-        updateOnlineStatus();
-    }, 5000);
+    // فحص دوري كل 10 ثواني
+    setInterval(async () => {
+        await updateOnlineStatus();
+    }, 10000);
 }
 
 // Override save functions to support offline
@@ -351,8 +368,8 @@ function fallbackToLocal(type, callback) {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    initOfflineManager();
+document.addEventListener('DOMContentLoaded', async function() {
+    await initOfflineManager();
     
     // Add sync indicator to header
     const header = document.querySelector('.main-header .header-content');
