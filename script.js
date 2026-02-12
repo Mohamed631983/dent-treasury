@@ -1632,16 +1632,14 @@ function executePrint() {
                 body { 
                     font-family: 'Cairo', sans-serif; 
                     margin: 0; 
-                    padding: 10px; 
+                    padding: 0; 
                 }
                 .print-receipt { 
                     background: white;
                     padding: 20px; 
                     border: 2px solid #333;
-                    margin-bottom: 15px;
+                    margin: 0 auto 15px auto;
                     max-width: 800px;
-                    margin-left: auto;
-                    margin-right: auto;
                     position: relative;
                     page-break-inside: avoid;
                     overflow: hidden;
@@ -1651,7 +1649,7 @@ function executePrint() {
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    width: 75%;
+                    width: 90%;
                     height: auto;
                     opacity: 0.15;
                     z-index: 0;
