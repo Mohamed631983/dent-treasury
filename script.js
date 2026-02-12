@@ -1845,7 +1845,7 @@ function generateCashReceiptHTML(data, isPreview) {
             <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
-                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
+                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
                     <div class="print-title-center">
                         <h2>بيان استلام نقدية</h2>
                     </div>
@@ -1938,7 +1938,7 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
             <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
-                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
+                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
                     <div class="print-title-center">
                         <h2>مبالغ صرفت بدون وجه حق</h2>
                     </div>
