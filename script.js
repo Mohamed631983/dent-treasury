@@ -2338,6 +2338,139 @@ function renderReportResults(results) {
     `;
     
     container.innerHTML = html;
+    
+    // Add print button
+    const printBtn = document.createElement('button');
+    printBtn.className = 'btn btn-primary';
+    printBtn.style.marginTop = '20px';
+    printBtn.style.marginRight = '10px';
+    printBtn.innerHTML = '<i class="fas fa-print"></i> طباعة التقرير';
+    printBtn.onclick = function() { printReport(results); };
+    container.appendChild(printBtn);
+}
+
+function printReport(results) {
+    if (!results || results.length === 0) {
+        showMessage('لا توجد بيانات للطباعة');
+        return;
+    }
+    
+    // Get date range
+    const fromDate = document.getElementById('report-from').value;
+    const toDate = document.getElementById('report-to').value;
+    
+    // Calculate totals
+    const totals = {
+        'estabd': 0, 'aht': 0, 'sandog_tamen': 0,
+        'wheda_markabat': 0, 'nogaba': 0, 'tamenat': 0,
+        'unjustified': 0
+    };
+    let cashCount = 0, unjustifiedCount = 0;
+    
+    results.forEach(item => {
+        if (item.type === 'cash') {
+            cashCount++;
+            if (item.accounts) {
+                totals['estabd'] += item.accounts['estabd'] || 0;
+                totals['aht'] += item.accounts['aht'] || 0;
+                totals['sandog_tamen'] += item.accounts['sandog_tamen'] || 0;
+                totals['wheda_markabat'] += item.accounts['wheda_markabat'] || 0;
+                totals['nogaba'] += item.accounts['nogaba'] || 0;
+                totals['tamenat'] += item.accounts['tamenat'] || 0;
+            }
+        } else {
+            unjustifiedCount++;
+            totals['unjustified'] += item.amount || 0;
+        }
+    });
+    
+    const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+    
+    // Build print content
+    let html = `
+    <div style="padding: 20px; font-family: 'Cairo', sans-serif; direction: rtl;">
+        <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1565c0; padding-bottom: 15px;">
+            <h2 style="color: #1565c0; margin: 0;">جامعة المنصورة - كلية طب الأسنان</h2>
+            <h3 style="color: #1976d2; margin: 5px 0;">مدفوعات الصناديق والمعاشات</h3>
+            <h4 style="color: #333; margin: 5px 0;">تقرير الفترة من ${fromDate} إلى ${toDate}</h4>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+                <tr style="background: #e3f2fd;">
+                    <th style="border: 1px solid #333; padding: 10px;">م</th>
+                    <th style="border: 1px solid #333; padding: 10px;">نوع</th>
+                    <th style="border: 1px solid #333; padding: 10px;">رقم الإيصال</th>
+                    <th style="border: 1px solid #333; padding: 10px;">الاسم</th>
+                    <th style="border: 1px solid #333; padding: 10px;">التاريخ</th>
+                    <th style="border: 1px solid #333; padding: 10px;">المبلغ</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    results.forEach((item, index) => {
+        const type = item.type === 'cash' ? 'نقدي' : 'بدون وجه حق';
+        const name = item.type === 'cash' ? item.payerName : item.name;
+        const receiptNo = item.type === 'cash' ? item.receiptNo : item.receiptNo;
+        const amount = item.type === 'cash' ? item.total : item.amount;
+        
+        html += `
+            <tr>
+                <td style="border: 1px solid #333; padding: 8px; text-align: center;">${index + 1}</td>
+                <td style="border: 1px solid #333; padding: 8px; text-align: center;">${type}</td>
+                <td style="border: 1px solid #333; padding: 8px;">${receiptNo}</td>
+                <td style="border: 1px solid #333; padding: 8px;">${name}</td>
+                <td style="border: 1px solid #333; padding: 8px; text-align: center;">${item.paymentDate}</td>
+                <td style="border: 1px solid #333; padding: 8px; text-align: left;">${amount.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 10px;">
+            <h4 style="margin: 10px 0; color: #1565c0;">ملخص التقرير</h4>
+            <p style="margin: 5px 0;">إيصالات النقدي: ${cashCount} | مبالغ بدون وجه حق: ${unjustifiedCount}</p>
+            <p style="margin: 5px 0; font-size: 18px; font-weight: bold;">الإجمالي الكلي: ${grandTotal.toFixed(2)} ج.م</p>
+        </div>
+        
+        <div style="margin-top: 30px; display: flex; justify-content: space-around; padding-top: 20px; border-top: 1px solid #333;">
+            <div style="text-align: center;">
+                <div style="border-bottom: 1px solid #333; width: 150px; margin-bottom: 5px;"></div>
+                <p style="margin: 0;">التوقيع</p>
+            </div>
+            <div style="text-align: center;">
+                <div style="border-bottom: 1px solid #333; width: 150px; margin-bottom: 5px;"></div>
+                <p style="margin: 0;">الختم</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
+            <p style="margin: 0;">تم إنشاء هذا التقرير بواسطة نظام مدفوعات الصناديق والمعاشات</p>
+        </div>
+    </div>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>تقرير الفترة</title>
+            <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+        </head>
+        <body>${html}</body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+    }, 500);
 }
 
 async function exportReport() {
