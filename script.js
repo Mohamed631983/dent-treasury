@@ -387,6 +387,15 @@ function setupEventListeners() {
     // Reports
     document.getElementById('generate-report').addEventListener('click', generateReport);
     document.getElementById('export-report').addEventListener('click', exportReport);
+    document.getElementById('print-report-btn').addEventListener('click', () => {
+        const fromDate = document.getElementById('report-from').value;
+        const toDate = document.getElementById('report-to').value;
+        if (!fromDate || !toDate) {
+            showMessage('الرجاء تحديد الفترة الزمنية أولاً');
+            return;
+        }
+        generateAndPrintReport(fromDate, toDate);
+    });
     
     // Clear all data button (admin only)
     const clearDataBtn = document.getElementById('clear-all-data');
@@ -2196,6 +2205,60 @@ function hasPermission(permission) {
     return currentUser.permissions && currentUser.permissions.includes(permission);
 }
 
+// Generate and print report directly
+async function generateAndPrintReport(fromDateStr, toDateStr) {
+    const type = 'both';
+    const from = parseReportDate(fromDateStr);
+    const to = parseReportDate(toDateStr);
+    
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+        showMessage('صيغة التاريخ غير صحيحة');
+        return;
+    }
+    
+    let results = [];
+    
+    try {
+        if (type === 'cash' || type === 'both') {
+            const snapshot = await database.ref('cash_receipts').once('value');
+            const data = snapshot.val();
+            if (data) {
+                const receipts = Object.values(data);
+                const filtered = receipts.filter(r => {
+                    const date = parseReportDate(r.paymentDate);
+                    return date >= from && date <= to;
+                });
+                results = results.concat(filtered.map(r => ({ ...r, type: 'cash' })));
+            }
+        }
+        
+        if (type === 'unjustified' || type === 'both') {
+            const snapshot = await database.ref('unjustified_payments').once('value');
+            const data = snapshot.val();
+            if (data) {
+                const payments = Object.values(data);
+                const filtered = payments.filter(p => {
+                    const date = parseReportDate(p.paymentDate);
+                    return date >= from && date <= to;
+                });
+                results = results.concat(filtered.map(p => ({ ...p, type: 'unjustified' })));
+            }
+        }
+        
+        results.sort((a, b) => parseReportDate(a.paymentDate) - parseReportDate(b.paymentDate));
+        
+        if (results.length === 0) {
+            showMessage('لا توجد بيانات للفترة المحددة');
+            return;
+        }
+        
+        printReport(results, fromDateStr, toDateStr);
+    } catch (error) {
+        console.error('Error generating report:', error);
+        showMessage('حدث خطأ في توليد التقرير');
+    }
+}
+
 // Reports
 async function generateReport() {
     const fromDateStr = document.getElementById('report-from').value;
@@ -2349,15 +2412,15 @@ function renderReportResults(results) {
     container.appendChild(printBtn);
 }
 
-function printReport(results) {
+function printReport(results, fromDate, toDate) {
     if (!results || results.length === 0) {
         showMessage('لا توجد بيانات للطباعة');
         return;
     }
     
-    // Get date range
-    const fromDate = document.getElementById('report-from').value;
-    const toDate = document.getElementById('report-to').value;
+    // Get date range from parameters or DOM
+    if (!fromDate) fromDate = document.getElementById('report-from').value;
+    if (!toDate) toDate = document.getElementById('report-to').value;
     
     // Calculate totals
     const totals = {
