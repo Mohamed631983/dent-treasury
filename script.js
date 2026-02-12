@@ -1638,10 +1638,7 @@ function executePrint() {
                     position: fixed;
                     top: 50%;
                     left: 50%;
-                    transform: translate(-50%, -50%) rotate(-30deg);
-                    width: 400px;
-                    height: 400px;
-                    opacity: 0.15;
+                    transform: translate(-50%, -50%);
                     z-index: 0;
                     pointer-events: none;
                 }
