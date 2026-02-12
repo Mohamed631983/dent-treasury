@@ -1634,25 +1634,8 @@ function executePrint() {
                     margin: 0; 
                     padding: 10px; 
                 }
-                .watermark {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 700px;
-                    height: 700px;
-                    z-index: 0;
-                    pointer-events: none;
-                }
-                .watermark img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: contain;
-                }
                 .print-receipt { 
                     background: white;
-                    position: relative;
-                    z-index: 1; 
                     padding: 20px; 
                     border: 2px solid #333;
                     margin-bottom: 15px;
@@ -1661,6 +1644,26 @@ function executePrint() {
                     margin-right: auto;
                     position: relative;
                     page-break-inside: avoid;
+                }
+                .print-receipt::before {
+                    content: "";
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 80%;
+                    height: 80%;
+                    background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
+                    background-size: contain;
+                    background-repeat: no-repeat;
+                    background-position: center;
+                    opacity: 0.15;
+                    z-index: 0;
+                    pointer-events: none;
+                }
+                .print-receipt > * {
+                    position: relative;
+                    z-index: 1;
                 }
                 .print-receipt-header { 
                     margin-bottom: 15px; 
@@ -1844,9 +1847,6 @@ function generateCashReceiptHTML(data, isPreview) {
     
     return `
         <div class="print-receipt">
-            <div class="watermark">
-                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt="Logo">
-            </div>
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
@@ -1937,9 +1937,6 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     
     return `
         <div class="print-receipt">
-            <div class="watermark">
-                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt="Logo">
-            </div>
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
