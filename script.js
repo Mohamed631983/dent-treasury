@@ -1644,24 +1644,20 @@ function executePrint() {
                     margin-right: auto;
                     position: relative;
                     page-break-inside: avoid;
+                    overflow: hidden;
                 }
-                .print-receipt::before {
-                    content: "";
+                .watermark-img {
                     position: absolute;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    width: 80%;
-                    height: 80%;
-                    background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
-                    background-size: contain;
-                    background-repeat: no-repeat;
-                    background-position: center;
+                    width: 75%;
+                    height: auto;
                     opacity: 0.15;
                     z-index: 0;
                     pointer-events: none;
                 }
-                .print-receipt > * {
+                .print-content {
                     position: relative;
                     z-index: 1;
                 }
@@ -1847,6 +1843,8 @@ function generateCashReceiptHTML(data, isPreview) {
     
     return `
         <div class="print-receipt">
+            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" class="watermark-img" alt="">
+            <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
@@ -1923,6 +1921,7 @@ function generateCashReceiptHTML(data, isPreview) {
                     <div class="print-by-user" style="text-align: right; font-size: 13px;">تم الطباعة بواسطة: ${printedByName}</div>
                 </div>
             </div>
+            </div>
         </div>
     `;
 }
@@ -1937,6 +1936,8 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     
     return `
         <div class="print-receipt">
+            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" class="watermark-img" alt="">
+            <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
@@ -1994,6 +1995,7 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
                     <div class="print-form-code" style="text-align: left; font-family: monospace; font-size: 13px; color: #333;">DEN-FIA-01-FM-01</div>
                     <div class="print-by-user" style="text-align: right; font-size: 13px;">تم الطباعة بواسطة: ${printedByName}</div>
                 </div>
+            </div>
             </div>
         </div>
     `;
