@@ -58,8 +58,8 @@ const firebaseConfig = {
     projectId: "dent-treasury-system",
     storageBucket: "dent-treasury-system.firebasestorage.app",
     messagingSenderId: "441456294766",
-  appId: "1:441456294766:web:9b1e6e0084801f8b051f7f",
-    measurementId: "G-T60N8Y3SW1"
+    appId: "1:441456294766:web:bbe2027f999bda44051f7f",
+    measurementId: "G-FVF4BJQPNB"
 };
 
 // Initialize Firebase
@@ -67,13 +67,6 @@ let app, auth, database;
 
 function initFirebase() {
     try {
-        // التحقق من وجود Firebase
-        if (typeof firebase === 'undefined') {
-            console.warn('Firebase not available - working in offline mode');
-            database = null;
-            return false;
-        }
-        
         if (!firebase.apps.length) {
             app = firebase.initializeApp(firebaseConfig);
         } else {
@@ -85,18 +78,13 @@ function initFirebase() {
         return true;
     } catch (error) {
         console.error('Firebase initialization error:', error);
-        // مش هنعمل alert عشان يشتغل Offline
-        database = null;
+        alert('خطأ في تهيئة Firebase: ' + error.message);
         return false;
     }
 }
 
 // Firebase Database References
 function getDbRef(path) {
-    if (!database) {
-        console.warn('Database not available - offline mode');
-        return null;
-    }
     return database.ref(path);
 }
 
@@ -106,13 +94,6 @@ function getDbRef(path) {
 function saveToFirebase(path, data, callback) {
     console.log('Saving to Firebase path:', path, 'Data:', data);
     const ref = getDbRef(path);
-    
-    if (!ref) {
-        console.warn('Firebase not available - data saved locally only');
-        if (callback) callback(null, 'local_' + Date.now());
-        return;
-    }
-    
     ref.push(data)
         .then((snapshot) => {
             console.log('Saved successfully with key:', snapshot.key);
@@ -127,13 +108,6 @@ function saveToFirebase(path, data, callback) {
 // تحديث البيانات في Firebase
 function updateInFirebase(path, data, callback) {
     const ref = getDbRef(path);
-    
-    if (!ref) {
-        console.warn('Firebase not available - updated locally only');
-        if (callback) callback(null);
-        return;
-    }
-    
     ref.update(data)
         .then(() => {
             if (callback) callback(null);
@@ -147,13 +121,6 @@ function updateInFirebase(path, data, callback) {
 // حذف من Firebase
 function deleteFromFirebase(path, callback) {
     const ref = getDbRef(path);
-    
-    if (!ref) {
-        console.warn('Firebase not available - deleted locally only');
-        if (callback) callback(null);
-        return;
-    }
-    
     ref.remove()
         .then(() => {
             if (callback) callback(null);
@@ -167,12 +134,6 @@ function deleteFromFirebase(path, callback) {
 // الاستماع للتغييرات في الوقت الفعلي
 function listenToFirebase(path, callback) {
     const ref = getDbRef(path);
-    
-    if (!ref) {
-        console.warn('Firebase not available - real-time updates disabled');
-        return;
-    }
-    
     ref.on('value', (snapshot) => {
         const data = snapshot.val();
         if (callback) callback(data);
@@ -182,13 +143,6 @@ function listenToFirebase(path, callback) {
 // الحصول على البيانات مرة واحدة
 function getFromFirebase(path, callback) {
     const ref = getDbRef(path);
-    
-    if (!ref) {
-        console.warn('Firebase not available - using local data only');
-        if (callback) callback(null, null);
-        return;
-    }
-    
     ref.once('value')
         .then((snapshot) => {
             if (callback) callback(null, snapshot.val());
@@ -222,16 +176,16 @@ document.addEventListener('scroll', resetInactivityTimer);
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const firebaseInitialized = initFirebase();
-        if (firebaseInitialized) {
-            console.log('Firebase initialized successfully');
-            
-            // إنشاء Admin افتراضي بعد ثانية واحدة
-            setTimeout(() => {
-                createDefaultAdminIfNeeded();
-            }, 1000);
-        } else {
-            console.log('Firebase not available - working in offline mode');
+        if (!firebaseInitialized) {
+            showMessage('فشل في تهيئة Firebase. تأكد من الإعدادات');
+            return;
         }
+        console.log('Firebase initialized successfully');
+        
+        // إنشاء Admin افتراضي بعد ثانية واحدة
+        setTimeout(() => {
+            createDefaultAdminIfNeeded();
+        }, 1000);
         
         setupEventListeners();
         checkLoginStatus();
@@ -239,12 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupRealtimeListeners();
     } catch (error) {
         console.error('Error initializing app:', error);
-        // مش هنعرض رسالة خطأ عشان يشتغل Offline
-        console.log('Continuing in offline mode...');
-        
-        setupEventListeners();
-        checkLoginStatus();
-        updateDateInputs();
+        showMessage('حدث خطأ في تهيئة التطبيق: ' + error.message);
     }
 });
 
@@ -428,66 +377,6 @@ function setupEventListeners() {
     // Confirm Modal
     document.getElementById('confirm-yes').addEventListener('click', handleConfirmYes);
     document.getElementById('confirm-no').addEventListener('click', closeAllModals);
-    
-    // تحميل قائمة الأسماء
-    updateNamesList();
-}
-        const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
-        
-        receipts.forEach(r => { if (r.payerName) allNames.push(r.payerName); });
-        payments.forEach(p => { if (p.name) allNames.push(p.name); });
-        
-        // إزالة التكرار
-        allNames = [...new Set(allNames)];
-        
-        // البحث
-        const matches = allNames.filter(name => 
-            name.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 5);
-        
-        if (matches.length === 0) return;
-        
-        // إنشاء قائمة الاقتراحات
-        const list = document.createElement('div');
-        list.id = 'suggestions-' + inputId;
-        list.style.cssText = `
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            max-height: 150px;
-            overflow-y: auto;
-            z-index: 9999;
-            width: 100%;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            margin-top: 2px;
-        `;
-        
-        matches.forEach(name => {
-            const div = document.createElement('div');
-            div.textContent = name;
-            div.style.cssText = 'padding: 8px; cursor: pointer; border-bottom: 1px solid #eee;';
-            div.onclick = function() {
-                input.value = name;
-                list.remove();
-            };
-            div.onmouseover = function() { this.style.background = '#f0f0f0'; };
-            div.onmouseout = function() { this.style.background = 'white'; };
-            list.appendChild(div);
-        });
-        
-        // وضع القائمة
-        input.parentNode.style.position = 'relative';
-        input.parentNode.appendChild(list);
-        
-        // إخفاء لما نضغط برا
-        document.addEventListener('click', function hide(e) {
-            if (e.target !== input && !list.contains(e.target)) {
-                list.remove();
-                document.removeEventListener('click', hide);
-            }
-        });
-    });
 }
 
 // Update Date Inputs to Today
@@ -1093,49 +982,46 @@ function finishSaveUnjustified(paymentData, isPrint) {
     editingType = null;
 }
 
-function updateNamesListWithName(name) {
-    // حفظ الاسم في LocalStorage
-    let names = JSON.parse(localStorage.getItem(DB_KEYS.NAMES_LIST) || '[]');
-    if (!names.includes(name)) {
-        names.push(name);
-        localStorage.setItem(DB_KEYS.NAMES_LIST, JSON.stringify(names));
-    }
+// Update Names List
+function updateNamesList() {
+    // Load names from Firebase instead of localStorage
+    getFromFirebase('names', (error, data) => {
+        let names = [];
+        if (!error && data) {
+            names = Object.values(data).map(item => item.name);
+        }
+        
+        const cashList = document.getElementById('names-list');
+        const unjustifiedList = document.getElementById('unjustified-names-list');
+        
+        // Limit to last 50 names for performance
+        const limitedNames = names.slice(-50);
+        
+        if (cashList) {
+            cashList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+        }
+        if (unjustifiedList) {
+            unjustifiedList.innerHTML = limitedNames.map(name => `<option value="${name}">`).join('');
+        }
+    });
 }
 
-// تحديث قائمة الأسماء في datalist
-function updateNamesList() {
-    // جلب الأسماء من قاعدة البيانات
-    let names = [];
-    
-    // من الإيصالات
-    const receipts = JSON.parse(localStorage.getItem(DB_KEYS.CASH_RECEIPTS) || '[]');
-    receipts.forEach(r => {
-        if (r.payerName && !names.includes(r.payerName)) {
-            names.push(r.payerName);
+function updateNamesListWithName(name) {
+    // حفظ الاسم في Firebase
+    getFromFirebase('names', (error, data) => {
+        let names = [];
+        if (!error && data) {
+            names = Object.values(data).map(item => item.name);
+        }
+        
+        if (!names.includes(name)) {
+            saveToFirebase('names', { name: name, createdAt: new Date().toISOString() }, (err) => {
+                if (!err) {
+                    loadNamesFromFirebase();
+                }
+            });
         }
     });
-    
-    // من المدفوعات
-    const payments = JSON.parse(localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS) || '[]');
-    payments.forEach(p => {
-        if (p.name && !names.includes(p.name)) {
-            names.push(p.name);
-        }
-    });
-    
-    // إزالة التكرار وترتيب
-    names = [...new Set(names)].sort();
-    
-    // تحديث القوائم
-    const cashList = document.getElementById('names-list');
-    const unjustifiedList = document.getElementById('unjustified-names-list');
-    
-    if (cashList) {
-        cashList.innerHTML = names.map(name => `<option value="${name}">`).join('');
-    }
-    if (unjustifiedList) {
-        unjustifiedList.innerHTML = names.map(name => `<option value="${name}">`).join('');
-    }
 }
 
 // Load Database - Firebase Version
