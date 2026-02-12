@@ -1634,8 +1634,26 @@ function executePrint() {
                     margin: 0; 
                     padding: 10px; 
                 }
+                .watermark {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) rotate(-30deg);
+                    width: 400px;
+                    height: 400px;
+                    opacity: 0.08;
+                    z-index: 0;
+                    pointer-events: none;
+                }
+                .watermark img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
                 .print-receipt { 
-                    background: white; 
+                    background: white;
+                    position: relative;
+                    z-index: 1; 
                     padding: 20px; 
                     border: 2px solid #333;
                     margin-bottom: 15px;
@@ -1827,6 +1845,9 @@ function generateCashReceiptHTML(data, isPreview) {
     
     return `
         <div class="print-receipt">
+            <div class="watermark">
+                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="Logo">
+            </div>
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
@@ -1917,6 +1938,9 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     
     return `
         <div class="print-receipt">
+            <div class="watermark">
+                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="Logo">
+            </div>
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخـــــــزينـــــــة</div>
