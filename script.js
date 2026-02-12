@@ -1641,7 +1641,7 @@ function executePrint() {
                     transform: translate(-50%, -50%) rotate(-30deg);
                     width: 400px;
                     height: 400px;
-                    opacity: 0.08;
+                    opacity: 0.15;
                     z-index: 0;
                     pointer-events: none;
                 }
@@ -1846,7 +1846,7 @@ function generateCashReceiptHTML(data, isPreview) {
     return `
         <div class="print-receipt">
             <div class="watermark">
-                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="Logo">
+                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt="Logo">
             </div>
             <div class="print-receipt-header">
                 <div class="print-institution-names">
@@ -1939,7 +1939,7 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     return `
         <div class="print-receipt">
             <div class="watermark">
-                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="Logo">
+                <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt="Logo">
             </div>
             <div class="print-receipt-header">
                 <div class="print-institution-names">
