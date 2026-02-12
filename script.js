@@ -1035,6 +1035,11 @@ function loadDatabase(type) {
                 receipts = Object.values(data);
             }
             console.log('Rendering cash receipts, count:', receipts.length);
+            receipts.sort((a, b) => {
+                const dateA = parseReportDate(a.paymentDate);
+                const dateB = parseReportDate(b.paymentDate);
+                return dateA - dateB;
+            });
             renderCashDatabase(receipts);
             // Scroll to bottom of table
             setTimeout(() => {
@@ -1050,6 +1055,11 @@ function loadDatabase(type) {
             if (!error && data) {
                 payments = Object.values(data);
             }
+            payments.sort((a, b) => {
+                const dateA = parseReportDate(a.paymentDate);
+                const dateB = parseReportDate(b.paymentDate);
+                return dateA - dateB;
+            });
             renderUnjustifiedDatabase(payments);
             // Scroll to bottom of table
             setTimeout(() => {
@@ -2176,11 +2186,15 @@ async function generateReport() {
         // If in DD/MM/YYYY format (from Firebase storage)
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
             const parts = dateStr.split('/');
-            return new Date(parts[2], parts[1] - 1, parts[0]);
+            const d = new Date(parts[2], parts[1] - 1, parts[0]);
+            d.setHours(12, 0, 0, 0);
+            return d;
         }
         
         // If in YYYY-MM-DD format (from HTML5 date input)
-        return new Date(dateStr);
+        const d = new Date(dateStr);
+        d.setHours(12, 0, 0, 0);
+        return d;
     }
     
     const from = parseReportDate(fromDateStr);
@@ -2319,7 +2333,7 @@ function renderReportResults(results) {
 async function exportReport() {
     const fromDate = document.getElementById('report-from').value;
     const toDate = document.getElementById('report-to').value;
-    const type = document.getElementById('report-type').value;
+    const type = 'both';
     
     if (!fromDate || !toDate) {
         showMessage('الرجاء تحديد الفترة الزمنية أولاً');
