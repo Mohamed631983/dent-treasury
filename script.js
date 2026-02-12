@@ -20,6 +20,24 @@ const AVATARS = {
     'female2': '👩‍⚕️'
 };
 
+// Global date parsing function
+function parseReportDate(dateStr) {
+    if (!dateStr) return new Date('Invalid');
+    
+    // If in DD/MM/YYYY format (from Firebase storage)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+        const parts = dateStr.split('/');
+        const d = new Date(parts[2], parts[1] - 1, parts[0]);
+        d.setHours(12, 0, 0, 0);
+        return d;
+    }
+    
+    // If in YYYY-MM-DD format (from HTML5 date input)
+    const d = new Date(dateStr);
+    d.setHours(12, 0, 0, 0);
+    return d;
+}
+
 // Account names mapping (safe keys for Firebase)
 const ACCOUNT_NAMES = {
     'estabd': 'استبعاد',
@@ -235,6 +253,11 @@ function setupRealtimeListeners() {
     listenToFirebase('cash_receipts', (data) => {
         if (data) {
             const receipts = Object.values(data);
+            receipts.sort((a, b) => {
+                const dateA = parseReportDate(a.paymentDate);
+                const dateB = parseReportDate(b.paymentDate);
+                return dateA - dateB;
+            });
             renderCashDatabase(receipts);
         }
     });
@@ -243,6 +266,11 @@ function setupRealtimeListeners() {
     listenToFirebase('unjustified_payments', (data) => {
         if (data) {
             const payments = Object.values(data);
+            payments.sort((a, b) => {
+                const dateA = parseReportDate(a.paymentDate);
+                const dateB = parseReportDate(b.paymentDate);
+                return dateA - dateB;
+            });
             renderUnjustifiedDatabase(payments);
         }
     });
@@ -2179,24 +2207,6 @@ async function generateReport() {
         return;
     }
     
-    // Parse dates - handle both YYYY-MM-DD (from date picker) and DD/MM/YYYY (from storage)
-    function parseReportDate(dateStr) {
-        if (!dateStr) return new Date('Invalid');
-        
-        // If in DD/MM/YYYY format (from Firebase storage)
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-            const parts = dateStr.split('/');
-            const d = new Date(parts[2], parts[1] - 1, parts[0]);
-            d.setHours(12, 0, 0, 0);
-            return d;
-        }
-        
-        // If in YYYY-MM-DD format (from HTML5 date input)
-        const d = new Date(dateStr);
-        d.setHours(12, 0, 0, 0);
-        return d;
-    }
-    
     const from = parseReportDate(fromDateStr);
     const to = parseReportDate(toDateStr);
     
@@ -2338,20 +2348,6 @@ async function exportReport() {
     if (!fromDate || !toDate) {
         showMessage('الرجاء تحديد الفترة الزمنية أولاً');
         return;
-    }
-    
-    // Parse dates - handle both YYYY-MM-DD (from date picker) and DD/MM/YYYY (from storage)
-    function parseReportDate(dateStr) {
-        if (!dateStr) return new Date('Invalid');
-        
-        // If in DD/MM/YYYY format (from Firebase storage)
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-            const parts = dateStr.split('/');
-            return new Date(parts[2], parts[1] - 1, parts[0]);
-        }
-        
-        // If in YYYY-MM-DD format (from HTML5 date input)
-        return new Date(dateStr);
     }
     
     const from = parseReportDate(fromDate);
