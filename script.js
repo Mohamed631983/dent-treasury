@@ -1839,9 +1839,11 @@ function generateCashReceiptHTML(data, isPreview) {
     // Get current user name for printing
     const printedByName = currentUser ? (currentUser.displayName || currentUser.username) : (data.printedBy || '');
     
+    const watermarkHTML = !isPreview ? '<img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" class="watermark-img" alt="">' : '';
+    
     return `
         <div class="print-receipt">
-            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" class="watermark-img" alt="">
+            ${watermarkHTML}
             <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
@@ -1932,9 +1934,11 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     const amountDisplay = data.amount ? parseFloat(data.amount).toFixed(2) : '0.00';
     const amountWordsDisplay = data.amountWords || '';
     
+    const watermarkHTML = !isPreview ? '<img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" class="watermark-img" alt="">' : '';
+    
     return `
         <div class="print-receipt">
-            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" class="watermark-img" alt="">
+            ${watermarkHTML}
             <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
