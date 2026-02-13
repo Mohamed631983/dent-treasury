@@ -382,7 +382,13 @@ function setupEventListeners() {
     document.getElementById('unjustified-excel-file').addEventListener('change', (e) => importFromExcel(e, 'unjustified'));
     
     // User Management
-    document.getElementById('user-form').addEventListener('submit', addUser);
+    document.getElementById('user-form').addEventListener('submit', function(e) {
+        if (editingUserKey) {
+            updateUser(e);
+        } else {
+            addUser(e);
+        }
+    });
     
     // Reports
     document.getElementById('generate-report').addEventListener('click', generateReport);
@@ -895,6 +901,11 @@ function finishSaveCashReceipt(receiptData, isPrint) {
         showMessage('تم حفظ البيانات بنجاح');
     }
     
+    // تسجيل العملية في سجل العمليات
+    const action = editingId ? 'edit' : 'add';
+    const actionType = editingId ? 'تعديل' : 'إضافة';
+    logAudit(action, `${actionType} إيصال نقدي: ${receiptData.receiptNo} - ${receiptData.payerName} (المبلغ: ${receiptData.total} ج.م)`, receiptData);
+    
     editingId = null;
     editingFirebaseKey = null;
     editingType = null;
@@ -1324,16 +1335,24 @@ function deleteReceipt(id, type) {
             .then((snapshot) => {
                 const data = snapshot.val();
                 let keyToDelete = null;
+                let deletedData = null;
                 
                 if (data) {
                     Object.keys(data).forEach((key) => {
                         if (data[key].id == id) {
                             keyToDelete = key;
+                            deletedData = data[key];
                         }
                     });
                 }
                 
                 if (keyToDelete) {
+                    // تسجيل عملية الحذف قبل الحذف
+                    const receiptType = type === 'cash' ? 'نقدي' : 'بدون وجه حق';
+                    const receiptNo = deletedData.receiptNo || deletedData.serial || 'غير معروف';
+                    const name = deletedData.payerName || deletedData.name || 'غير معروف';
+                    logAudit('delete', `حذف إيصال ${receiptType}: ${receiptNo} - ${name}`, deletedData);
+                    
                     return ref.child(keyToDelete).remove();
                 } else {
                     throw new Error('السجل غير موجود');
@@ -2044,6 +2063,9 @@ function printReceipt(id, type) {
                     totalWords: item.totalWords,
                     printedBy: printedByName
                 };
+                
+                // تسجيل عملية الطباعة
+                logAudit('print', `طباعة إيصال نقدي: ${item.receiptNo} - ${item.payerName} (المبلغ: ${item.total} ج.م)`, item);
             } else {
                 const amount = item.amount || 0;
                 printData = {
@@ -2056,6 +2078,9 @@ function printReceipt(id, type) {
                     purpose: item.purpose,
                     printedBy: printedByName
                 };
+                
+                // تسجيل عملية الطباعة
+                logAudit('print', `طباعة مبلغ بدون وجه حق: ${item.receiptNo} - ${item.name} (المبلغ: ${amount} ج.م)`, item);
             }
             
             showPrintPreview();
@@ -2104,6 +2129,9 @@ function loadUsers() {
                     <td>${user.permissions ? user.permissions.join(' - ') : 'الكل'}</td>
                     <td>
                         ${user.username !== 'admin' ? `
+                        <button class="action-btn edit" onclick="editUser('${user.id}')" style="margin-left: 5px;">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <button class="action-btn delete" onclick="deleteUser('${user.id}')">
                             <i class="fas fa-trash"></i>
                         </button>` : '-'}
@@ -2170,6 +2198,9 @@ function addUser(e) {
             // حفظ المستخدم في Firebase
             usersRef.push(newUser)
                 .then(() => {
+                    // تسجيل عملية الإضافة في سجل العمليات
+                    logAudit('add_user', `إضافة مستخدم جديد: ${username} (${role === 'admin' ? 'مدير' : 'مستخدم'})`, newUser);
+                    
                     document.getElementById('user-form').reset();
                     loadUsers();
                     showMessage('تم إضافة المستخدم بنجاح');
@@ -2193,16 +2224,20 @@ function deleteUser(id) {
             .then((snapshot) => {
                 const usersData = snapshot.val();
                 let userKey = null;
+                let userData = null;
                 
                 if (usersData) {
                     Object.keys(usersData).forEach((key) => {
                         if (usersData[key].id == id) {
                             userKey = key;
+                            userData = usersData[key];
                         }
                     });
                 }
                 
                 if (userKey) {
+                    // تسجيل عملية الحذف في سجل العمليات
+                    logAudit('delete_user', `حذف المستخدم: ${userData.username}`, userData);
                     return usersRef.child(userKey).remove();
                 } else {
                     throw new Error('المستخدم غير موجود');
@@ -2215,6 +2250,250 @@ function deleteUser(id) {
             .catch((error) => {
                 console.error('Error deleting user:', error);
                 showMessage('حدث خطأ في حذف المستخدم: ' + error.message);
+            });
+    });
+}
+
+// تعديل بيانات المستخدم
+let editingUserId = null;
+let editingUserKey = null;
+
+function editUser(id) {
+    // البحث عن المستخدم في Firebase
+    const usersRef = database.ref('users');
+    usersRef.once('value')
+        .then((snapshot) => {
+            const usersData = snapshot.val();
+            let userKey = null;
+            let userData = null;
+            
+            if (usersData) {
+                Object.keys(usersData).forEach((key) => {
+                    if (usersData[key].id == id) {
+                        userKey = key;
+                        userData = usersData[key];
+                    }
+                });
+            }
+            
+            if (userData) {
+                editingUserId = id;
+                editingUserKey = userKey;
+                
+                // ملء النموذج ببيانات المستخدم
+                document.getElementById('new-username').value = userData.username;
+                document.getElementById('new-display-name').value = userData.displayName || '';
+                document.getElementById('new-password').value = userData.password || '';
+                document.getElementById('user-role').value = userData.role;
+                document.getElementById('user-gender').value = userData.gender || 'male';
+                
+                // تحديد الصورة
+                const avatarRadio = document.querySelector(`input[name="user-avatar"][value="${userData.avatar || 'male1'}"]`);
+                if (avatarRadio) avatarRadio.checked = true;
+                
+                // تحديد الصلاحيات
+                document.querySelectorAll('.perm-checkbox').forEach(cb => {
+                    cb.checked = userData.permissions && userData.permissions.includes(cb.value);
+                });
+                
+                // تغيير عنوان النموذج والزر
+                document.querySelector('#users-management h2').textContent = 'تعديل مستخدم';
+                const submitBtn = document.querySelector('#user-form button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+                
+                // إضافة زر إلغاء
+                if (!document.getElementById('cancel-edit-btn')) {
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.type = 'button';
+                    cancelBtn.id = 'cancel-edit-btn';
+                    cancelBtn.className = 'btn btn-secondary';
+                    cancelBtn.style.marginRight = '10px';
+                    cancelBtn.innerHTML = '<i class="fas fa-times"></i> إلغاء';
+                    cancelBtn.onclick = cancelEditUser;
+                    submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
+                }
+                
+                showMessage('تم تحميل بيانات المستخدم للتعديل');
+            } else {
+                showMessage('المستخدم غير موجود');
+            }
+        })
+        .catch((error) => {
+            console.error('Error loading user for edit:', error);
+            showMessage('حدث خطأ في تحميل بيانات المستخدم');
+        });
+}
+
+function cancelEditUser() {
+    editingUserId = null;
+    editingUserKey = null;
+    document.getElementById('user-form').reset();
+    
+    // إعادة عنوان النموذج والزر للوضع الأصلي
+    document.querySelector('#users-management h2').textContent = 'إضافة مستخدم جديد';
+    const submitBtn = document.querySelector('#user-form button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> إضافة مستخدم';
+    
+    // إخفاء زر الإلغاء
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (cancelBtn) cancelBtn.remove();
+}
+
+function updateUser(e) {
+    e.preventDefault();
+    
+    if (!editingUserKey) {
+        showMessage('لا يوجد مستخدم محدد للتعديل');
+        return;
+    }
+    
+    const username = document.getElementById('new-username').value.trim();
+    const displayName = document.getElementById('new-display-name').value.trim();
+    const password = document.getElementById('new-password').value;
+    const role = document.getElementById('user-role').value;
+    const gender = document.getElementById('user-gender').value;
+    
+    const avatarEl = document.querySelector('input[name="user-avatar"]:checked');
+    const avatar = avatarEl ? avatarEl.value : 'male1';
+    
+    const permissions = [];
+    document.querySelectorAll('.perm-checkbox:checked').forEach(cb => {
+        permissions.push(cb.value);
+    });
+    
+    const updatedUser = {
+        username: username.trim(),
+        displayName: (displayName || username).trim(),
+        password: password.trim(),
+        role,
+        gender,
+        avatar,
+        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print'] : permissions,
+        updatedAt: new Date().toISOString()
+    };
+    
+    // تحديث المستخدم في Firebase
+    const usersRef = database.ref('users');
+    usersRef.child(editingUserKey).update(updatedUser)
+        .then(() => {
+            // تسجيل عملية التعديل في سجل العمليات
+            logAudit('edit_user', `تعديل بيانات المستخدم: ${username}`, updatedUser);
+            
+            document.getElementById('user-form').reset();
+            cancelEditUser();
+            loadUsers();
+            showMessage('تم تعديل بيانات المستخدم بنجاح');
+        })
+        .catch((error) => {
+            console.error('Error updating user:', error);
+            showMessage('حدث خطأ في تعديل بيانات المستخدم: ' + error.message);
+        });
+}
+
+// سجل العمليات (Audit Trail)
+function logAudit(action, description, details = null) {
+    const auditLog = {
+        action: action,
+        description: description,
+        details: details,
+        userId: currentUser ? currentUser.id : null,
+        username: currentUser ? (currentUser.displayName || currentUser.username) : 'Unknown',
+        timestamp: new Date().toISOString()
+    };
+    
+    // حفظ في Firebase
+    database.ref('audit_logs').push(auditLog)
+        .catch((error) => {
+            console.error('Error logging audit:', error);
+        });
+}
+
+// تحميل سجل العمليات
+function loadAuditLogs() {
+    const tbody = document.getElementById('audit-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">جاري التحميل...</td></tr>';
+    
+    database.ref('audit_logs').orderByChild('timestamp').limitToLast(100).once('value')
+        .then((snapshot) => {
+            const logsData = snapshot.val();
+            let logs = [];
+            
+            if (logsData) {
+                logs = Object.values(logsData).reverse();
+            }
+            
+            tbody.innerHTML = '';
+            
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">لا توجد سجلات</td></tr>';
+                return;
+            }
+            
+            logs.forEach(log => {
+                const date = new Date(log.timestamp);
+                const dateStr = date.toLocaleDateString('ar-EG');
+                const timeStr = date.toLocaleTimeString('ar-EG');
+                
+                const actionClass = {
+                    'add': 'success',
+                    'edit': 'warning',
+                    'delete': 'danger',
+                    'print': 'info',
+                    'add_user': 'success',
+                    'edit_user': 'warning',
+                    'delete_user': 'danger'
+                }[log.action] || 'default';
+                
+                const actionText = {
+                    'add': 'إضافة',
+                    'edit': 'تعديل',
+                    'delete': 'حذف',
+                    'print': 'طباعة',
+                    'add_user': 'إضافة مستخدم',
+                    'edit_user': 'تعديل مستخدم',
+                    'delete_user': 'حذف مستخدم'
+                }[log.action] || log.action;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dateStr} ${timeStr}</td>
+                    <td><span class="badge badge-${actionClass}">${actionText}</span></td>
+                    <td>${log.description}</td>
+                    <td>${log.username}</td>
+                    <td>
+                        <button class="action-btn view" onclick="viewAuditDetails('${log.timestamp}', '${log.action}', '${log.description}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch((error) => {
+            console.error('Error loading audit logs:', error);
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">حدث خطأ في تحميل السجلات</td></tr>';
+        });
+}
+
+function viewAuditDetails(timestamp, action, description) {
+    // يمكن عرض تفاصيل أكثر هنا
+    showMessage(`التفاصيل: ${description}\nالتاريخ: ${new Date(timestamp).toLocaleString('ar-EG')}`);
+}
+
+// مسح سجل العمليات
+function clearAuditLogs() {
+    showConfirm('هل أنت متأكد من مسح جميع سجلات العمليات؟\n(هذه العملية لا يمكن التراجع عنها)', () => {
+        database.ref('audit_logs').remove()
+            .then(() => {
+                logAudit('clear_audit', 'مسح جميع سجلات العمليات', null);
+                loadAuditLogs();
+                showMessage('تم مسح سجلات العمليات بنجاح');
+            })
+            .catch((error) => {
+                console.error('Error clearing audit logs:', error);
+                showMessage('حدث خطأ في مسح السجلات: ' + error.message);
             });
     });
 }

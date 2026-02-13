@@ -4,8 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدفوعات الصناديق والمعاشات - كلية طب الأسنان</title>
-    <link rel="stylesheet" href="styles.css?v=21">
+    <link rel="stylesheet" href="styles.css?v=22">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- أنماط سجل العمليات -->
+    <style>
+        .badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .badge-default {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        .audit-logs-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -467,6 +502,37 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- سجل العمليات -->
+                    <div class="audit-logs-section" style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
+                        <h3 style="color: #1565c0; margin-bottom: 20px;">
+                            <i class="fas fa-history"></i> سجل العمليات
+                        </h3>
+                        <div style="margin-bottom: 15px;">
+                            <button class="btn btn-primary" onclick="loadAuditLogs()">
+                                <i class="fas fa-sync"></i> تحديث السجل
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearAuditLogs()" style="margin-right: 10px;">
+                                <i class="fas fa-trash"></i> مسح السجل
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="audit-table">
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ والوقت</th>
+                                        <th>العملية</th>
+                                        <th>الوصف</th>
+                                        <th>المستخدم</th>
+                                        <th>إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-tbody">
+                                    <tr><td colspan="5" style="text-align: center;">اضغط "تحديث السجل" لعرض السجلات</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -567,6 +633,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="script.js?v=21"></script>
+    <script src="script.js?v=22"></script>
 </body>
 </html>
