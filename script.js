@@ -2296,10 +2296,11 @@ function editUser(id) {
                     cb.checked = userData.permissions && userData.permissions.includes(cb.value);
                 });
                 
-                // تغيير عنوان النموذج والزر
-                document.querySelector('#users-management h2').textContent = 'تعديل مستخدم';
+                // تغيير عنوان الزر
                 const submitBtn = document.querySelector('#user-form button[type="submit"]');
-                submitBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+                }
                 
                 // إضافة زر إلغاء
                 if (!document.getElementById('cancel-edit-btn')) {
@@ -2310,10 +2311,12 @@ function editUser(id) {
                     cancelBtn.style.marginRight = '10px';
                     cancelBtn.innerHTML = '<i class="fas fa-times"></i> إلغاء';
                     cancelBtn.onclick = cancelEditUser;
-                    submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
+                    if (submitBtn && submitBtn.parentNode) {
+                        submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
+                    }
                 }
                 
-                showMessage('تم تحميل بيانات المستخدم للتعديل');
+                showMessage('تم تحميل بيانات المستخدم للتعديل. قم بالتعديل ثم اضغط "حفظ التعديلات"');
             } else {
                 showMessage('المستخدم غير موجود');
             }
@@ -2329,10 +2332,11 @@ function cancelEditUser() {
     editingUserKey = null;
     document.getElementById('user-form').reset();
     
-    // إعادة عنوان النموذج والزر للوضع الأصلي
-    document.querySelector('#users-management h2').textContent = 'إضافة مستخدم جديد';
+    // إعادة الزر للوضع الأصلي
     const submitBtn = document.querySelector('#user-form button[type="submit"]');
-    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> إضافة مستخدم';
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> إضافة مستخدم';
+    }
     
     // إخفاء زر الإلغاء
     const cancelBtn = document.getElementById('cancel-edit-btn');
