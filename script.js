@@ -1638,26 +1638,28 @@ function executePrint() {
                     background: white;
                     padding: 20px; 
                     border: 2px solid #333;
-                    margin: 0 auto 15px auto;
+                    margin: 0 auto;
                     max-width: 800px;
                     position: relative;
                     page-break-inside: avoid;
                 }
-                .print-receipt.has-watermark::before {
-                    content: "";
+                .watermark-container {
                     position: absolute;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
                     width: 90%;
-                    height: 80%;
-                    background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
-                    background-size: contain;
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    opacity: 0.15;
+                    text-align: center;
                     z-index: 0;
                     pointer-events: none;
+                }
+                .watermark-container img {
+                    width: 100%;
+                    max-height: 600px;
+                    object-fit: contain;
+                    opacity: 0.15;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                 }
                 .print-content {
                     position: relative;
@@ -1843,8 +1845,11 @@ function generateCashReceiptHTML(data, isPreview) {
     // Get current user name for printing
     const printedByName = currentUser ? (currentUser.displayName || currentUser.username) : (data.printedBy || '');
     
+    const watermarkDiv = !isPreview ? '<div class="watermark-container"><img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt=""></div>' : '';
+    
     return `
-        <div class="print-receipt ${!isPreview ? 'has-watermark' : ''}">
+        <div class="print-receipt">
+            ${watermarkDiv}
             <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
@@ -1935,8 +1940,11 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     const amountDisplay = data.amount ? parseFloat(data.amount).toFixed(2) : '0.00';
     const amountWordsDisplay = data.amountWords || '';
     
+    const watermarkDiv = !isPreview ? '<div class="watermark-container"><img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt=""></div>' : '';
+    
     return `
-        <div class="print-receipt ${!isPreview ? 'has-watermark' : ''}">
+        <div class="print-receipt">
+            ${watermarkDiv}
             <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
