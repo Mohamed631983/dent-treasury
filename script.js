@@ -1629,41 +1629,42 @@ function executePrint() {
                     size: A4;
                     margin: 10mm;
                 }
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    min-height: 100%;
+                }
                 body { 
                     font-family: 'Cairo', sans-serif; 
                     margin: 0; 
-                    padding: 0; 
-                }
-                .print-receipt { 
+                    padding: 10px 0; 
                     background: white;
-                    padding: 20px; 
-                    border: 2px solid #333;
-                    margin: 0 auto;
-                    max-width: 800px;
-                    position: relative;
-                    page-break-inside: avoid;
                 }
-                .watermark-container {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 90%;
-                    text-align: center;
-                    z-index: 0;
-                    pointer-events: none;
-                }
-                .watermark-container img {
-                    width: 100%;
-                    max-height: 600px;
-                    object-fit: contain;
+                body::before {
+                    content: "";
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
+                    background-repeat: no-repeat;
+                    background-position: center;
+                    background-size: 75%;
                     opacity: 0.15;
+                    z-index: -1;
+                    pointer-events: none;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
-                .print-content {
+                .print-receipt { 
+                    background: transparent;
+                    padding: 20px; 
+                    border: 2px solid #333;
+                    margin: 0 auto 15px auto;
+                    max-width: 800px;
                     position: relative;
-                    z-index: 1;
+                    page-break-inside: avoid;
                 }
                 .print-receipt-header { 
                     margin-bottom: 15px; 
@@ -1845,12 +1846,8 @@ function generateCashReceiptHTML(data, isPreview) {
     // Get current user name for printing
     const printedByName = currentUser ? (currentUser.displayName || currentUser.username) : (data.printedBy || '');
     
-    const watermarkDiv = !isPreview ? '<div class="watermark-container"><img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt=""></div>' : '';
-    
     return `
         <div class="print-receipt">
-            ${watermarkDiv}
-            <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
@@ -1927,7 +1924,6 @@ function generateCashReceiptHTML(data, isPreview) {
                     <div class="print-by-user" style="text-align: right; font-size: 13px;">تم الطباعة بواسطة: ${printedByName}</div>
                 </div>
             </div>
-            </div>
         </div>
     `;
 }
@@ -1940,12 +1936,8 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
     const amountDisplay = data.amount ? parseFloat(data.amount).toFixed(2) : '0.00';
     const amountWordsDisplay = data.amountWords || '';
     
-    const watermarkDiv = !isPreview ? '<div class="watermark-container"><img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt=""></div>' : '';
-    
     return `
         <div class="print-receipt">
-            ${watermarkDiv}
-            <div class="print-content">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
                     <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
@@ -2003,7 +1995,6 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
                     <div class="print-form-code" style="text-align: left; font-family: monospace; font-size: 13px; color: #333;">DEN-FIA-01-FM-01</div>
                     <div class="print-by-user" style="text-align: right; font-size: 13px;">تم الطباعة بواسطة: ${printedByName}</div>
                 </div>
-            </div>
             </div>
         </div>
     `;
