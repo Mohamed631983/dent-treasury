@@ -1642,7 +1642,6 @@ function executePrint() {
                     max-width: 800px;
                     position: relative;
                     page-break-inside: avoid;
-                    overflow: hidden;
                 }
                 .watermark-img {
                     position: absolute;
