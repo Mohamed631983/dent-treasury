@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدفوعات الصناديق والمعاشات - كلية طب الأسنان</title>
+    <link rel="stylesheet" href="styles.css?v=24">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- أنماط سجل العمليات -->
+    <style>
+        .badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .badge-default {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        .audit-logs-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1565c0">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <!-- صفحة تسجيل الدخول -->
+    <div id="login-page" class="page active">
+        <div class="login-container">
+            <div class="login-box">
+                <div class="logo-section">
+                    <div class="main-logo" style="display: flex; gap: 30px; justify-content: center; margin-bottom: 15px;">
+                        <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" 
+                             alt="شعار الكلية" 
+                             style="width: 120px; height: 120px; border-radius: 12px; border: 3px solid #2e7d32; box-shadow: 0 4px 12px rgba(0,0,0,0.3); object-fit: contain; background: white; padding: 5px;">
+                        <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" 
+                             alt="شعار الخزينة" 
+                             style="width: 120px; height: 120px; border-radius: 12px; border: 3px solid #2e7d32; box-shadow: 0 4px 12px rgba(0,0,0,0.3); object-fit: contain; background: white; padding: 5px;">
+                    </div>
+                    <div class="institution-name">
+                        <h2>جامعة المنصورة</h2>
+                        <h3>كلية طب الأسنان</h3>
+                    </div>
+                </div>
+                
+                <h1 class="system-title">مدفوعات الصناديق والمعاشات</h1>
+                
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">اسم المستخدم</label>
+                        <input type="text" id="username" name="username" required autocomplete="username" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">كلمة المرور</label>
+                        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                        <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+                    </button>
+                    <div id="login-loading" style="display: none; text-align: center; margin-top: 15px; color: #1565c0;">
+                        <i class="fas fa-spinner fa-spin"></i> جاري الاتصال...
+                    </div>
+                    <div id="login-error" style="display: none; text-align: center; margin-top: 15px; color: #c62828; font-weight: bold;">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- الصفحة الرئيسية -->
+    <div id="main-page" class="page">
+        <header class="main-header">
+            <div class="header-content">
+                <div class="header-logos">
+                    <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="شعار الكلية" class="header-logo-img">
+                    <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" alt="شعار الخزينة" class="header-logo-img">
+                </div>
+                <h2>مدفوعات الصناديق والمعاشات</h2>
+                <div class="user-info">
+                    <!-- مؤشر حالة المزامنة -->
+                    <div id="sync-status" style="margin-left: 15px; font-size: 13px;">🔄 جاري التحميل...</div>
+                    <button id="sync-btn" class="btn btn-small" style="margin-left: 10px; background: #17a2b8;" onclick="syncWithFirebase()">
+                        <i class="fas fa-sync"></i> مزامنة
+                    </button>
+                    <span id="current-user">المستخدم</span>
+                    <button id="logout-btn" class="btn btn-small">
+                        <i class="fas fa-sign-out-alt"></i> خروج
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="main-nav">
+            <button class="nav-btn active" data-page="cash-receipt">
+                <i class="fas fa-receipt"></i> بيان استلام نقدية
+            </button>
+            <button class="nav-btn" data-page="unjustified-payment">
+                <i class="fas fa-money-bill-wave"></i> مبالغ صرفت بدون وجه حق
+            </button>
+            <button class="nav-btn" data-page="database">
+                <i class="fas fa-database"></i> قاعدة البيانات
+            </button>
+            <button class="nav-btn admin-only" data-page="users" style="display:none;">
+                <i class="fas fa-users-cog"></i> إدارة المستخدمين
+            </button>
+            <button class="nav-btn" data-page="reports">
+                <i class="fas fa-chart-bar"></i> تقارير الفترات
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <!-- صفحة إيصال الاستلام النقدي -->
+            <div id="cash-receipt" class="content-page active">
+                <div class="receipt-container">
+                    <div class="receipt-header">
+                        <div class="receipt-logos">
+                            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="شعار الكلية" class="receipt-logo-img">
+                            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" alt="شعار الخزينة" class="receipt-logo-img">
+                        </div>
+                        <h3>بيان استلام نقدية</h3>
+                    </div>
+
+                    <form id="cash-receipt-form">
+                        <div class="receipt-form">
+                            <div class="form-row">
+                                <div class="form-group small">
+                                    <label for="receipt-no">رقم الإيصال</label>
+                                    <input type="text" id="receipt-no" name="receiptNo" required>
+                                </div>
+                                <div class="form-group large">
+                                    <label for="payer-name">الاسم</label>
+                                    <input type="text" id="payer-name" name="payerName" list="names-list" required>
+                                    <datalist id="names-list"></datalist>
+                                </div>
+                            </div>
+
+                            <div class="form-row three-cols">
+                                <div class="form-group">
+                                    <label for="payment-date">تاريخ الدفع</label>
+                                    <input type="date" id="payment-date" name="paymentDate" class="date-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="period-from">الفترة من</label>
+                                    <input type="date" id="period-from" name="periodFrom" class="date-input">
+                                </div>
+                                <div class="form-group">
+                                    <label for="period-to">الفترة إلى</label>
+                                    <input type="date" id="period-to" name="periodTo" class="date-input">
+                                </div>
+                            </div>
+
+                            <div class="accounts-section">
+                                <h4>الحسابات</h4>
+                                <table class="accounts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>البند</th>
+                                            <th>القيمة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>استبعاد</td>
+                                            <td><input type="number" class="account-input" data-account="estabd" value="0" min="0" step="0.01"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>ا.ه.ت</td>
+                                            <td><input type="number" class="account-input" data-account="aht" value="0" min="0" step="0.01"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>صندوق التأمين</td>
+                                            <td><input type="number" class="account-input" data-account="sandog_tamen" value="0" min="0" step="0.01"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>وحدة مركبات</td>
+                                            <td><input type="number" class="account-input" data-account="wheda_markabat" value="0" min="0" step="0.01"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>نقابة العاملين</td>
+                                            <td><input type="number" class="account-input" data-account="nogaba" value="0" min="0" step="0.01"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>الهيئة العامة للتأمينات والمعاشات</td>
+                                            <td><input type="number" class="account-input" data-account="tamenat" value="0" min="0" step="0.01"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="totals-section">
+                                <div class="total-row">
+                                    <label>الإجمالي بالأرقام:</label>
+                                    <span id="total-amount" class="total-number">0.00</span>
+                                    <span>ج.م</span>
+                                </div>
+                                <div class="total-row">
+                                    <label>الإجمالي بالحروف:</label>
+                                    <span id="total-words" class="total-words">صفر جنيه فقط لا غير</span>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-success" id="save-cash-receipt">
+                                    <i class="fas fa-save"></i> حفظ البيانات
+                                </button>
+                                <button type="button" class="btn btn-primary" id="print-cash-receipt">
+                                    <i class="fas fa-print"></i> طباعة
+                                </button>
+                                <button type="button" class="btn btn-warning" id="goto-database">
+                                    <i class="fas fa-database"></i> قاعدة البيانات
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- صفحة مبالغ صرفت بدون وجه حق -->
+            <div id="unjustified-payment" class="content-page">
+                <div class="receipt-container">
+                    <div class="receipt-header">
+                        <div class="receipt-logos">
+                            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="شعار الكلية" class="receipt-logo-img">
+                            <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" alt="شعار الخزينة" class="receipt-logo-img">
+                        </div>
+                        <h3>مبالغ صرفت بدون وجه حق</h3>
+                    </div>
+
+                    <form id="unjustified-form">
+                        <div class="receipt-form">
+                            <div class="form-row">
+                                <div class="form-group small">
+                                    <label for="unjustified-serial">م</label>
+                                    <input type="text" id="unjustified-serial" name="serial" readonly>
+                                </div>
+                                <div class="form-group small">
+                                    <label for="unjustified-receipt-no">رقم الإيصال/ الإشعار</label>
+                                    <input type="text" id="unjustified-receipt-no" name="receiptNo" required>
+                                </div>
+                                <div class="form-group large">
+                                    <label for="unjustified-name">الاسم</label>
+                                    <input type="text" id="unjustified-name" name="name" list="unjustified-names-list" required>
+                                    <datalist id="unjustified-names-list"></datalist>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="unjustified-date">تاريخ الدفع</label>
+                                    <input type="date" id="unjustified-date" name="paymentDate" class="date-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="unjustified-amount">المبلغ (ج.م)</label>
+                                    <input type="number" id="unjustified-amount" name="amount" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group wide">
+                                    <label for="unjustified-purpose">الغرض/السبب</label>
+                                    <input type="text" id="unjustified-purpose" name="purpose" required>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-success" id="save-unjustified">
+                                    <i class="fas fa-save"></i> حفظ البيانات
+                                </button>
+                                <button type="button" class="btn btn-primary" id="print-unjustified">
+                                    <i class="fas fa-print"></i> طباعة
+                                </button>
+                                <button type="button" class="btn btn-warning" id="goto-unjustified-db">
+                                    <i class="fas fa-database"></i> قاعدة البيانات
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- صفحة قاعدة البيانات -->
+            <div id="database" class="content-page">
+                <div class="database-container">
+                    <h3>قاعدة البيانات - بيانات الاستلام النقدي</h3>
+                    
+                    <div class="db-controls">
+                        <div class="search-box">
+                            <input type="text" id="db-search" placeholder="البحث بالاسم أو رقم الإيصال...">
+                            <button class="btn btn-primary" id="db-search-btn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="btn btn-light-nav" id="goto-unjustified-db-btn" title="الانتقال لقاعدة بيانات مبالغ بدون وجه حق">
+                                <i class="fas fa-arrow-left"></i> قاعدة بيانات مبالغ بدون وجه حق
+                            </button>
+                        </div>
+                        <div class="db-actions">
+                            <button class="btn btn-success" id="export-excel">
+                                <i class="fas fa-file-excel"></i> تصدير Excel
+                            </button>
+                            <button class="btn btn-info" id="import-excel">
+                                <i class="fas fa-upload"></i> استيراد Excel
+                            </button>
+                            <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none;">
+                            <button class="btn btn-danger admin-only" id="delete-selected" style="display:none;">
+                                <i class="fas fa-trash"></i> حذف المحدد
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="db-table-container">
+                        <table class="data-table" id="cash-db-table">
+                            <thead>
+                                <tr>
+                                    <th>إجراء</th>
+                                    <th><input type="checkbox" id="select-all"></th>
+                                    <th>م</th>
+                                    <th>رقم الإيصال/ الإشعار</th>
+                                    <th>الاسم</th>
+                                    <th>تاريخ الدفع</th>
+                                    <th>الفترة من</th>
+                                    <th>الفترة إلى</th>
+                                    <th>استبعاد</th>
+                                    <th>أ.ه.ت</th>
+                                    <th>ص.تأمين</th>
+                                    <th>و.مركبات</th>
+                                    <th>ن.عاملين</th>
+                                    <th>التأمينات</th>
+                                    <th>الإجمالي</th>
+                                    <th>مدخل البيان</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cash-db-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- قاعدة بيانات مبالغ بدون وجه حق -->
+            <div id="unjustified-db" class="content-page">
+                <div class="database-container">
+                    <h3>قاعدة البيانات - مبالغ صرفت بدون وجه حق</h3>
+                    
+                    <div class="db-controls">
+                        <div class="search-box">
+                            <input type="text" id="unjustified-search" placeholder="البحث بالاسم أو رقم الإيصال...">
+                            <button class="btn btn-primary" id="unjustified-search-btn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="btn btn-light-nav" id="goto-cash-db-btn" title="الانتقال لقاعدة بيانات الاستلام النقدي">
+                                <i class="fas fa-arrow-right"></i> قاعدة بيانات الاستلام النقدي
+                            </button>
+                        </div>
+                        <div class="db-actions">
+                            <button class="btn btn-success" id="export-unjustified-excel">
+                                <i class="fas fa-file-excel"></i> تصدير Excel
+                            </button>
+                            <button class="btn btn-info" id="import-unjustified-excel">
+                                <i class="fas fa-upload"></i> استيراد Excel
+                            </button>
+                            <input type="file" id="unjustified-excel-file" accept=".xlsx,.xls,.csv" style="display:none;">
+                            <button class="btn btn-danger admin-only" id="delete-unjustified-selected" style="display:none;">
+                                <i class="fas fa-trash"></i> حذف المحدد
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="db-table-container">
+                        <table class="data-table" id="unjustified-db-table">
+                            <thead>
+                                <tr>
+                                    <th>إجراء</th>
+                                    <th><input type="checkbox" id="select-all-unjustified"></th>
+                                    <th>م</th>
+                                    <th>رقم الإيصال/ الإشعار</th>
+                                    <th>الاسم</th>
+                                    <th>تاريخ الدفع</th>
+                                    <th>المبلغ</th>
+                                    <th>الغرض/السبب</th>
+                                    <th>مدخل البيان</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unjustified-db-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- صفحة إدارة المستخدمين -->
+            <div id="users" class="content-page">
+                <div class="users-container">
+                    <h3>إدارة المستخدمين</h3>
+                    
+                    <div class="user-form-section">
+                        <form id="user-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-username">اسم المستخدم (للدخول)</label>
+                                    <input type="text" id="new-username" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-display-name">الاسم الظاهر (للعرض)</label>
+                                    <input type="text" id="new-display-name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password">كلمة المرور</label>
+                                    <input type="password" id="new-password" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="user-role">الصلاحية</label>
+                                    <select id="user-role">
+                                        <option value="user">مستخدم عادي</option>
+                                        <option value="admin">مدير</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="user-gender">الجنس</label>
+                                    <select id="user-gender">
+                                        <option value="male">ذكر</option>
+                                        <option value="female">أنثى</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>الصورة الرمزية</label>
+                                    <div class="avatar-selection">
+                                        <label class="avatar-option">
+                                            <input type="radio" name="user-avatar" value="male1" checked>
+                                            <span class="avatar-icon">👨‍💼</span>
+                                        </label>
+                                        <label class="avatar-option">
+                                            <input type="radio" name="user-avatar" value="male2">
+                                            <span class="avatar-icon">👨‍⚕️</span>
+                                        </label>
+                                        <label class="avatar-option">
+                                            <input type="radio" name="user-avatar" value="female1">
+                                            <span class="avatar-icon">👩‍💼</span>
+                                        </label>
+                                        <label class="avatar-option">
+                                            <input type="radio" name="user-avatar" value="female2">
+                                            <span class="avatar-icon">👩‍⚕️</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permissions-section">
+                                <h4>الصلاحيات:</h4>
+                                <div class="permissions-grid">
+                                    <label><input type="checkbox" class="perm-checkbox" value="edit"> تعديل</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="delete"> حذف</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="import"> استيراد Excel</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="export"> تصدير Excel</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="print"> طباعة</label>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-user-plus"></i> إضافة مستخدم
+                            </button>
+                            <button type="button" class="btn btn-danger" id="clear-all-data" style="margin-right: 10px; background: #dc3545;">
+                                <i class="fas fa-trash-alt"></i> مسح جميع البيانات
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="users-table-section">
+                        <table class="data-table" id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>الصورة</th>
+                                    <th>اسم المستخدم</th>
+                                    <th>الاسم الظاهر</th>
+                                    <th>الجنس</th>
+                                    <th>الصلاحية</th>
+                                    <th>الصلاحيات</th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- سجل العمليات -->
+                    <div class="audit-logs-section" style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
+                        <h3 style="color: #1565c0; margin-bottom: 20px;">
+                            <i class="fas fa-history"></i> سجل العمليات
+                        </h3>
+                        <div style="margin-bottom: 15px;">
+                            <button class="btn btn-primary" onclick="loadAuditLogs()">
+                                <i class="fas fa-sync"></i> تحديث السجل
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearAuditLogs()" style="margin-right: 10px;">
+                                <i class="fas fa-trash"></i> مسح السجل
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="audit-table">
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ والوقت</th>
+                                        <th>العملية</th>
+                                        <th>الوصف</th>
+                                        <th>المستخدم</th>
+                                        <th>إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-tbody">
+                                    <tr><td colspan="5" style="text-align: center;">اضغط "تحديث السجل" لعرض السجلات</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- صفحة التقارير -->
+            <div id="reports" class="content-page">
+                <div class="reports-container">
+                    <h3>تقارير الفترات الزمنية</h3>
+                    
+                    <div class="report-filter">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="report-from">من تاريخ</label>
+                                <input type="date" id="report-from" class="date-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="report-to">إلى تاريخ</label>
+                                <input type="date" id="report-to" class="date-input">
+                            </div>
+                            <div class="form-group" style="display:none;">
+                                <label for="report-type">نوع التقرير</label>
+                                <select id="report-type">
+                                    <option value="both">الكل</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="generate-report">
+                            <i class="fas fa-search"></i> عرض التقرير
+                        </button>
+                        <button class="btn btn-success" id="export-report">
+                            <i class="fas fa-file-excel"></i> تصدير Excel
+                        </button>
+                        <button class="btn btn-info" id="print-report-btn">
+                            <i class="fas fa-print"></i> طباعة التقرير
+                        </button>
+                    </div>
+
+                    <div class="report-results" id="report-results">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- نافذة معاينة الطباعة -->
+    <div id="print-modal" class="modal">
+        <div class="modal-content print-modal-content">
+            <div class="modal-header">
+                <h3>معاينة الطباعة</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="print-preview-content"></div>
+            </div>
+            <div class="modal-footer">
+                <div class="print-copies">
+                    <label>عدد النسخ:</label>
+                    <input type="number" id="print-copies" value="1" min="1" max="10">
+                </div>
+                <button class="btn btn-primary" id="confirm-print">
+                    <i class="fas fa-print"></i> طباعة
+                </button>
+                <button class="btn btn-secondary close-modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>تأكيد</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="confirm-yes">نعم</button>
+                <button class="btn btn-secondary" id="confirm-no">لا</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة رسالة -->
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>رسالة</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="message-text"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary close-modal">موافق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- مؤشر وضع عدم الاتصال -->
+    <div id="offline-indicator" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #dc3545; color: white; text-align: center; padding: 10px; z-index: 9999; font-weight: bold;">
+        <i class="fas fa-wifi-slash"></i> أنت في وضع عدم الاتصال. سيتم حفظ البيانات محلياً ومزامنتها عند عودة الاتصال.
+    </div>
+    
+    <!-- مؤشر البيانات المعلقة -->
+    <div id="pending-sync-indicator" style="display: none; position: fixed; bottom: 40px; left: 20px; background: #ffc107; color: #000; padding: 10px 15px; border-radius: 5px; z-index: 9998; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <i class="fas fa-clock"></i> <span id="pending-count">0</span> سجل في انتظار المزامنة
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- الملف الأصلي للتطبيق -->
+    <script src="script.js?v=24"></script>
+    <!-- ملف دعم عدم الاتصال -->
+    <script src="offline-script.js?v=24"></script>
+    <script>
+        // Initialize offline mode when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize IndexedDB first
+            if (typeof initOfflineMode === 'function') {
+                await initOfflineMode();
+            }
+            
+            // Show offline indicator when offline
+            window.addEventListener('offline', () => {
+                document.getElementById('offline-indicator').style.display = 'block';
+            });
+            
+            window.addEventListener('online', () => {
+                document.getElementById('offline-indicator').style.display = 'none';
+            });
+            
+            // Check initial status
+            if (!navigator.onLine) {
+                document.getElementById('offline-indicator').style.display = 'block';
+            }
+            
+            // Periodically check pending sync count
+            setInterval(async () => {
+                try {
+                    const pending = await getFromOfflineDB('pending_sync');
+                    const count = pending ? pending.length : 0;
+                    const indicator = document.getElementById('pending-sync-indicator');
+                    if (count > 0) {
+                        indicator.style.display = 'block';
+                        document.getElementById('pending-count').textContent = count;
+                    } else {
+                        indicator.style.display = 'none';
+                    }
+                } catch (e) {
+                    console.error('Error checking pending sync:', e);
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
