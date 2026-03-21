@@ -113,6 +113,13 @@ async function syncWithFirebase() {
     
     showMessage('🔄 جاري المزامنة مع السيرفر...');
     
+    // انتظار Firebase Auth قبل المزامنة
+    await new Promise((resolve) => {
+        waitForFirebaseAuth(() => {
+            resolve();
+        });
+    });
+    
     try {
         const pendingItems = await getFromOfflineDB('pending_sync');
         
@@ -347,6 +354,12 @@ async function saveReceiptWithOfflineSupport(type, data, isPrint = false) {
     if (isOnline()) {
         const path = type === 'cash' ? 'cash_receipts' : 'unjustified_payments';
         try {
+            // انتظار Firebase Auth قبل الحفظ
+            await new Promise((resolve) => {
+                waitForFirebaseAuth(() => {
+                    resolve();
+                });
+            });
             await database.ref(path).push(data);
             console.log('✅ Saved to Firebase:', data.id);
         } catch (e) {
@@ -370,6 +383,12 @@ async function loadDatabaseWithOfflineSupport(type) {
     // جرب Firebase أولاً لو فيه نت
     if (isOnline() && database) {
         try {
+            // انتظار Firebase Auth قبل التحميل
+            await new Promise((resolve) => {
+                waitForFirebaseAuth(() => {
+                    resolve();
+                });
+            });
             const snapshot = await database.ref(storeName).once('value');
             const data = snapshot.val();
             
