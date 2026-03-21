@@ -128,6 +128,9 @@
             <button class="nav-btn" data-page="reports">
                 <i class="fas fa-chart-bar"></i> تقارير الفترات
             </button>
+            <button class="nav-btn" data-page="person-reports">
+                <i class="fas fa-user"></i> تقرير شخص
+            </button>
         </nav>
 
         <main class="main-content">
@@ -570,6 +573,36 @@
                     </div>
 
                     <div class="report-results" id="report-results">
+                    </div>
+                </div>
+            </div>
+
+            <!-- صفحة تقرير شخص -->
+            <div id="person-reports" class="content-page">
+                <div class="reports-container">
+                    <h3>تقرير شخص - كل المدفوعات</h3>
+                    
+                    <div class="report-filter">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="person-select">اختر الشخص</label>
+                                <select id="person-select">
+                                    <option value="">-- اختر الشخص --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="generate-person-report">
+                            <i class="fas fa-search"></i> عرض التقرير
+                        </button>
+                        <button class="btn btn-success" id="export-person-report">
+                            <i class="fas fa-file-excel"></i> تصدير Excel
+                        </button>
+                        <button class="btn btn-info" id="print-person-report-btn">
+                            <i class="fas fa-print"></i> طباعة التقرير
+                        </button>
+                    </div>
+
+                    <div class="report-results" id="person-report-results">
                     </div>
                 </div>
             </div>
