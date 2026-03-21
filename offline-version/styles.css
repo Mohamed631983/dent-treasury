@@ -878,6 +878,87 @@ body {
     overflow-x: auto;
 }
 
+/* Person Report Styles */
+.report-summary {
+    background: var(--light-color);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border-right: 4px solid var(--primary-color);
+}
+
+.report-summary h4 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.summary-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.stat {
+    padding: 10px 15px;
+    background: var(--white);
+    border-radius: 5px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat.grand-total {
+    background: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray);
+    font-size: 16px;
+}
+
+/* Report Table Styles */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: var(--white);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.report-table th,
+.report-table td {
+    padding: 12px 15px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+.report-table th {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.report-table tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+.report-table tr:hover {
+    background: #f0f7ff;
+}
+
+.report-table-actions {
+    margin-top: 20px;
+    text-align: center;
+}
+
 /* Modal Styles */
 /* Avatar Selection */
 .avatar-selection {

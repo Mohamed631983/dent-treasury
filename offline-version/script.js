@@ -712,6 +712,8 @@ function navigateTo(page) {
         loadDatabase('unjustified');
     } else if (page === 'users') {
         loadUsers();
+    } else if (page === 'person-reports') {
+        loadPersonNames();
     }
 }
 
@@ -3556,3 +3558,317 @@ function clearAllData() {
         }
     );
 }
+
+// ==================== Person Report Functions ====================
+
+// تحميل أسماء الأشخاص في القائمة المنسدلة
+function loadPersonNames() {
+    const select = document.getElementById('person-select');
+    if (!select) return;
+    
+    // مسح القائمة
+    select.innerHTML = '<option value="">-- اختر الشخص --</option>';
+    
+    // جمع الأسماء من Firebase
+    getFromFirebase('cash_receipts', (error, cashData) => {
+        getFromFirebase('unjustified_payments', (error2, unjustifiedData) => {
+            const namesSet = new Set();
+            
+            // جمع أسماء من الإيصالات النقدية
+            if (cashData) {
+                Object.values(cashData).forEach(item => {
+                    if (item.payerName) {
+                        namesSet.add(item.payerName.trim());
+                    }
+                });
+            }
+            
+            // جمع أسماء من المبالغ بدون وجه حق
+            if (unjustifiedData) {
+                Object.values(unjustifiedData).forEach(item => {
+                    if (item.name) {
+                        namesSet.add(item.name.trim());
+                    }
+                });
+            }
+            
+            // ترتيب الأسماء وإضافتها للقائمة
+            const sortedNames = Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'ar'));
+            sortedNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+        });
+    });
+}
+
+// توليد تقرير شخص
+async function generatePersonReport() {
+    const personName = document.getElementById('person-select').value;
+    if (!personName) {
+        showMessage('يجب اختيار شخص');
+        return;
+    }
+    
+    const results = [];
+    
+    // جلب الإيصالات النقدية
+    getFromFirebase('cash_receipts', (error, cashData) => {
+        if (!error && cashData) {
+            Object.entries(cashData).forEach(([key, item]) => {
+                if (item.payerName && item.payerName.trim() === personName) {
+                    results.push({ ...item, firebaseKey: key, type: 'cash' });
+                }
+            });
+        }
+        
+        // جلب المبالغ بدون وجه حق
+        getFromFirebase('unjustified_payments', (error2, unjustifiedData) => {
+            if (!error2 && unjustifiedData) {
+                Object.entries(unjustifiedData).forEach(([key, item]) => {
+                    if (item.name && item.name.trim() === personName) {
+                        results.push({ ...item, firebaseKey: key, type: 'unjustified' });
+                    }
+                });
+            }
+            
+            // ترتيب حسب التاريخ
+            results.sort((a, b) => parseReportDate(a.paymentDate) - parseReportDate(b.paymentDate));
+            
+            // عرض النتائج
+            renderPersonReportResults(results, personName);
+        });
+    });
+}
+
+// عرض نتائج تقرير شخص
+function renderPersonReportResults(results, personName) {
+    const container = document.getElementById('person-report-results');
+    container.innerHTML = '';
+    
+    if (!results || results.length === 0) {
+        container.innerHTML = '<div class="no-data">لا توجد مدفوعات لهذا الشخص</div>';
+        return;
+    }
+    
+    // حساب الإجماليات
+    const totals = {
+        'estabd': 0, 'aht': 0, 'sandog_tamen': 0,
+        'wheda_markabat': 0, 'nogaba': 0, 'tamenat': 0,
+        'unjustified': 0
+    };
+    let cashCount = 0, unjustifiedCount = 0;
+    let grandTotal = 0;
+    
+    results.forEach(item => {
+        if (item.type === 'cash') {
+            cashCount++;
+            if (item.accounts) {
+                Object.keys(totals).forEach(key => {
+                    if (key !== 'unjustified') {
+                        totals[key] += item.accounts[key] || 0;
+                    }
+                });
+            }
+            grandTotal += parseFloat(item.total) || 0;
+        } else {
+            unjustifiedCount++;
+            totals.unjustified += parseFloat(item.amount) || 0;
+            grandTotal += parseFloat(item.amount) || 0;
+        }
+    });
+    
+    // إنشاء الجدول
+    let html = `
+        <div class="report-summary">
+            <h4>تقرير المدفوعات: ${personName}</h4>
+            <div class="summary-stats">
+                <span class="stat">إجمالي السجلات: ${results.length}</span>
+                <span class="stat">إيصالات نقدية: ${cashCount}</span>
+                <span class="stat">مبالغ بدون وجه حق: ${unjustifiedCount}</span>
+                <span class="stat grand-total">الإجمالي: ${grandTotal.toLocaleString('ar-EG')} ج.م</span>
+            </div>
+        </div>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>م</th>
+                    <th>رقم الإيصال</th>
+                    <th>التاريخ</th>
+                    <th>النوع</th>
+                    <th>المبلغ</th>
+                    <th>البيان</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    results.forEach((item, index) => {
+        const date = item.paymentDate || 'غير محدد';
+        const receiptNo = item.receiptNo || item.serial || 'غير محدد';
+        const amount = item.type === 'cash' ? (item.total || 0) : (item.amount || 0);
+        const type = item.type === 'cash' ? 'نقد' : 'بدون وجه حق';
+        let description = '';
+        
+        if (item.type === 'cash' && item.accounts) {
+            const accounts = [];
+            Object.entries(item.accounts).forEach(([key, value]) => {
+                if (value > 0) {
+                    const accountNames = {
+                        'estabd': 'établissement',
+                        'aht': 'AHT',
+                        'sandog_tamen': 'صندوق تأمين',
+                        'wheda_markabat': 'وحدات مركبات',
+                        'nogaba': 'نقابة',
+                        'tamenat': 'تأمينات'
+                    };
+                    accounts.push(`${accountNames[key] || key}: ${parseFloat(value).toLocaleString('ar-EG')}`);
+                }
+            });
+            description = accounts.join(' + ');
+        } else if (item.type === 'unjustified') {
+            description = item.notes || 'بدون بيان';
+        }
+        
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${receiptNo}</td>
+                <td>${date}</td>
+                <td>${type}</td>
+                <td>${parseFloat(amount).toLocaleString('ar-EG')} ج.م</td>
+                <td>${description}</td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    
+    // زر الطباعة
+    html += `<div class="report-table-actions">
+        <button class="btn btn-info" onclick="printPersonReport('${personName}')">
+            <i class="fas fa-print"></i> طباعة التقرير
+        </button>
+    </div>`;
+    
+    container.innerHTML = html;
+}
+
+// طباعة تقرير شخص
+function printPersonReport(personName) {
+    const resultsContainer = document.getElementById('person-report-results');
+    if (!resultsContainer || !resultsContainer.innerHTML.trim()) {
+        showMessage('لا توجد بيانات للطباعة');
+        return;
+    }
+    
+    const printContent = `
+        <!DOCTYPE html>
+        <html dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <title>تقرير شخص: ${personName}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h2 { text-align: center; color: #1565c0; }
+                .report-summary { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                .summary-stats { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; }
+                .stat { padding: 8px 12px; background: #f5f5f5; border-radius: 3px; }
+                .grand-total { background: #1565c0; color: white; font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+                th { background: #1565c0; color: white; }
+                tr:nth-child(even) { background: #f9f9f9; }
+                @media print {
+                    body { margin: 0; padding: 10px; }
+                    button { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <h2>تقرير المدفوعات: ${personName}</h2>
+            <p style="text-align: center; color: #666;">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</p>
+            ${resultsContainer.innerHTML}
+        </body>
+        </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// تصدير تقرير شخص إلى Excel
+function exportPersonReport() {
+    const resultsContainer = document.getElementById('person-report-results');
+    if (!resultsContainer || !resultsContainer.innerHTML.trim()) {
+        showMessage('لا توجد بيانات للتصدير');
+        return;
+    }
+    
+    const personName = document.getElementById('person-select').value || 'شخص';
+    
+    // استخراج البيانات من الجدول
+    const table = resultsContainer.querySelector('table');
+    if (!table) {
+        showMessage('لا توجد بيانات للتصدير');
+        return;
+    }
+    
+    const rows = table.querySelectorAll('tr');
+    const data = [];
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('th, td');
+        const rowData = [];
+        cells.forEach(cell => {
+            rowData.push(cell.textContent.trim());
+        });
+        data.push(rowData);
+    });
+    
+    // إنشاء workbook
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'تقرير');
+    
+    // تصدير
+    XLSX.writeFile(wb, `تقرير_${personName}_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
+}
+
+// إضافة مستمعي الأحداث
+document.addEventListener('DOMContentLoaded', function() {
+    // تحميل أسماء الأشخاص عند فتح صفحة التقرير
+    const personReportsPage = document.getElementById('person-reports');
+    if (personReportsPage) {
+        loadPersonNames();
+    }
+    
+    // مستمع لتوليد التقرير
+    const generatePersonReportBtn = document.getElementById('generate-person-report');
+    if (generatePersonReportBtn) {
+        generatePersonReportBtn.addEventListener('click', generatePersonReport);
+    }
+    
+    // مستمع للتصدير
+    const exportPersonReportBtn = document.getElementById('export-person-report');
+    if (exportPersonReportBtn) {
+        exportPersonReportBtn.addEventListener('click', exportPersonReport);
+    }
+    
+    // مستمع للطباعة
+    const printPersonReportBtn = document.getElementById('print-person-report-btn');
+    if (printPersonReportBtn) {
+        printPersonReportBtn.addEventListener('click', function() {
+            const personName = document.getElementById('person-select').value;
+            if (personName) {
+                printPersonReport(personName);
+            } else {
+                showMessage('يجب اختيار شخص');
+            }
+        });
+    }
+});
