@@ -585,10 +585,9 @@
                     <div class="report-filter">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="person-select">اختر الشخص</label>
-                                <select id="person-select">
-                                    <option value="">-- اختر الشخص --</option>
-                                </select>
+                                <label for="person-search">ابحث عن شخص</label>
+                                <input type="text" id="person-search" placeholder="اكتب جزء من الاسم للبحث..." autocomplete="off">
+                                <div id="person-suggestions" class="suggestions-list"></div>
                             </div>
                         </div>
                         <button class="btn btn-primary" id="generate-person-report">

@@ -959,6 +959,36 @@ body {
     text-align: center;
 }
 
+/* Suggestions List */
+.suggestions-list {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border-radius: 0 0 5px 5px;
+}
+
+.suggestion-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:hover {
+    background: #f0f7ff;
+}
+
+/* Make search input container relative */
+.form-group:has(#person-search) {
+    position: relative;
+}
+
 /* Modal Styles */
 /* Avatar Selection */
 .avatar-selection {

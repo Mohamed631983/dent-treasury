@@ -3564,13 +3564,11 @@ function clearAllData() {
 
 // ==================== Person Report Functions ====================
 
-// تحميل أسماء الأشخاص في القائمة المنسدلة
+// تحميل أسماء الأشخاص وعرضها كاقتراحات
 function loadPersonNames() {
-    const select = document.getElementById('person-select');
-    if (!select) return;
-    
-    // مسح القائمة
-    select.innerHTML = '<option value="">-- اختر الشخص --</option>';
+    const input = document.getElementById('person-search');
+    const suggestionsDiv = document.getElementById('person-suggestions');
+    if (!input || !suggestionsDiv) return;
     
     // جمع الأسماء من Firebase
     getFromFirebase('cash_receipts', (error, cashData) => {
@@ -3595,13 +3593,46 @@ function loadPersonNames() {
                 });
             }
             
-            // ترتيب الأسماء وإضافتها للقائمة
+            // ترتيب الأسماء
             const sortedNames = Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'ar'));
-            sortedNames.forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                select.appendChild(option);
+            
+            // عرض الاقتراحات عند الكتابة
+            input.addEventListener('input', function() {
+                const searchText = this.value.trim();
+                suggestionsDiv.innerHTML = '';
+                
+                if (searchText.length < 2) {
+                    suggestionsDiv.style.display = 'none';
+                    return;
+                }
+                
+                // البحث الجزئي
+                const matches = sortedNames.filter(name => 
+                    name.toLowerCase().includes(searchText.toLowerCase())
+                );
+                
+                if (matches.length > 0) {
+                    suggestionsDiv.style.display = 'block';
+                    matches.forEach(name => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.textContent = name;
+                        div.addEventListener('click', function() {
+                            input.value = name;
+                            suggestionsDiv.style.display = 'none';
+                        });
+                        suggestionsDiv.appendChild(div);
+                    });
+                } else {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+            
+            // إخفاء الاقتراحات عند النقر خارجها
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                    suggestionsDiv.style.display = 'none';
+                }
             });
         });
     });
@@ -3609,9 +3640,9 @@ function loadPersonNames() {
 
 // توليد تقرير شخص
 async function generatePersonReport() {
-    const personName = document.getElementById('person-select').value;
+    const personName = document.getElementById('person-search').value.trim();
     if (!personName) {
-        showMessage('يجب اختيار شخص');
+        showMessage('يجب كتابة اسم الشخص');
         return;
     }
     
@@ -3621,7 +3652,8 @@ async function generatePersonReport() {
     getFromFirebase('cash_receipts', (error, cashData) => {
         if (!error && cashData) {
             Object.entries(cashData).forEach(([key, item]) => {
-                if (item.payerName && item.payerName.trim() === personName) {
+                // بحث جزئي في الاسم
+                if (item.payerName && item.payerName.toLowerCase().includes(personName.toLowerCase())) {
                     results.push({ ...item, firebaseKey: key, type: 'cash' });
                 }
             });
@@ -3631,7 +3663,8 @@ async function generatePersonReport() {
         getFromFirebase('unjustified_payments', (error2, unjustifiedData) => {
             if (!error2 && unjustifiedData) {
                 Object.entries(unjustifiedData).forEach(([key, item]) => {
-                    if (item.name && item.name.trim() === personName) {
+                    // بحث جزئي في الاسم
+                    if (item.name && item.name.toLowerCase().includes(personName.toLowerCase())) {
                         results.push({ ...item, firebaseKey: key, type: 'unjustified' });
                     }
                 });
@@ -3720,12 +3753,12 @@ function renderPersonReportResults(results, personName) {
             Object.entries(item.accounts).forEach(([key, value]) => {
                 if (value > 0) {
                     const accountNames = {
-                        'estabd': 'établissement',
-                        'aht': 'AHT',
-                        'sandog_tamen': 'صندوق تأمين',
-                        'wheda_markabat': 'وحدات مركبات',
-                        'nogaba': 'نقابة',
-                        'tamenat': 'تأمينات'
+                        'estabd': 'استبعاد',
+                        'aht': 'ا.ه.ت',
+                        'sandog_tamen': 'صندوق التأمين',
+                        'wheda_markabat': 'وحدة مركبات',
+                        'nogaba': 'نقابة العاملين',
+                        'tamenat': 'الهيئة العامة للتأمينات والمعاشات'
                     };
                     accounts.push(`${accountNames[key] || key}: ${parseFloat(value).toLocaleString('ar-EG')}`);
                 }
@@ -3812,7 +3845,7 @@ function exportPersonReport() {
         return;
     }
     
-    const personName = document.getElementById('person-select').value || 'شخص';
+    const personName = document.getElementById('person-search').value || 'شخص';
     
     // استخراج البيانات من الجدول
     const table = resultsContainer.querySelector('table');
@@ -3866,11 +3899,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const printPersonReportBtn = document.getElementById('print-person-report-btn');
     if (printPersonReportBtn) {
         printPersonReportBtn.addEventListener('click', function() {
-            const personName = document.getElementById('person-select').value;
+            const personName = document.getElementById('person-search').value.trim();
             if (personName) {
                 printPersonReport(personName);
             } else {
-                showMessage('يجب اختيار شخص');
+                showMessage('يجب كتابة اسم الشخص');
             }
         });
     }
