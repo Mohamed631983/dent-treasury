@@ -82,6 +82,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app, auth, database;
+let firebaseReady = false;
+let firebaseReadyCallbacks = [];
 
 function initFirebase() {
     try {
@@ -93,11 +95,38 @@ function initFirebase() {
         auth = firebase.auth();
         database = firebase.database();
         console.log('Firebase initialized successfully');
+        
+        // Anonymous Authentication لتفعيل الرول auth != null
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                console.log('Anonymous user signed in:', user.uid);
+                firebaseReady = true;
+                firebaseReadyCallbacks.forEach(cb => cb());
+                firebaseReadyCallbacks = [];
+            } else {
+                console.log('Signing in anonymously...');
+                auth.signInAnonymously().catch(function(error) {
+                    console.error('Anonymous sign-in error:', error);
+                    // في حالة فشل Anonymous Auth، نحاول مرة أخرى
+                    setTimeout(() => auth.signInAnonymously(), 1000);
+                });
+            }
+        });
+        
         return true;
     } catch (error) {
         console.error('Firebase initialization error:', error);
         alert('خطأ في تهيئة Firebase: ' + error.message);
         return false;
+    }
+}
+
+// انتظار Firebase Auth قبل استخدام Database
+function waitForFirebaseAuth(callback) {
+    if (firebaseReady) {
+        callback();
+    } else {
+        firebaseReadyCallbacks.push(callback);
     }
 }
 
@@ -110,65 +139,75 @@ function getDbRef(path) {
 
 // حفظ البيانات في Firebase
 function saveToFirebase(path, data, callback) {
-    console.log('Saving to Firebase path:', path, 'Data:', data);
-    const ref = getDbRef(path);
-    ref.push(data)
-        .then((snapshot) => {
-            console.log('Saved successfully with key:', snapshot.key);
-            if (callback) callback(null, snapshot.key);
-        })
-        .catch((error) => {
-            console.error('Error saving to Firebase:', error);
-            if (callback) callback(error, null);
-        });
+    waitForFirebaseAuth(() => {
+        console.log('Saving to Firebase path:', path, 'Data:', data);
+        const ref = getDbRef(path);
+        ref.push(data)
+            .then((snapshot) => {
+                console.log('Saved successfully with key:', snapshot.key);
+                if (callback) callback(null, snapshot.key);
+            })
+            .catch((error) => {
+                console.error('Error saving to Firebase:', error);
+                if (callback) callback(error, null);
+            });
+    });
 }
 
 // تحديث البيانات في Firebase
 function updateInFirebase(path, data, callback) {
-    const ref = getDbRef(path);
-    ref.update(data)
-        .then(() => {
-            if (callback) callback(null);
-        })
-        .catch((error) => {
-            console.error('Error updating Firebase:', error);
-            if (callback) callback(error);
-        });
+    waitForFirebaseAuth(() => {
+        const ref = getDbRef(path);
+        ref.update(data)
+            .then(() => {
+                if (callback) callback(null);
+            })
+            .catch((error) => {
+                console.error('Error updating Firebase:', error);
+                if (callback) callback(error);
+            });
+    });
 }
 
 // حذف من Firebase
 function deleteFromFirebase(path, callback) {
-    const ref = getDbRef(path);
-    ref.remove()
-        .then(() => {
-            if (callback) callback(null);
-        })
-        .catch((error) => {
-            console.error('Error deleting from Firebase:', error);
-            if (callback) callback(error);
-        });
+    waitForFirebaseAuth(() => {
+        const ref = getDbRef(path);
+        ref.remove()
+            .then(() => {
+                if (callback) callback(null);
+            })
+            .catch((error) => {
+                console.error('Error deleting from Firebase:', error);
+                if (callback) callback(error);
+            });
+    });
 }
 
 // الاستماع للتغييرات في الوقت الفعلي
 function listenToFirebase(path, callback) {
-    const ref = getDbRef(path);
-    ref.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (callback) callback(data);
+    waitForFirebaseAuth(() => {
+        const ref = getDbRef(path);
+        ref.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (callback) callback(data);
+        });
     });
 }
 
 // الحصول على البيانات مرة واحدة
 function getFromFirebase(path, callback) {
-    const ref = getDbRef(path);
-    ref.once('value')
-        .then((snapshot) => {
-            if (callback) callback(null, snapshot.val());
-        })
-        .catch((error) => {
-            console.error('Error getting from Firebase:', error);
-            if (callback) callback(error, null);
-        });
+    waitForFirebaseAuth(() => {
+        const ref = getDbRef(path);
+        ref.once('value')
+            .then((snapshot) => {
+                if (callback) callback(null, snapshot.val());
+            })
+            .catch((error) => {
+                console.error('Error getting from Firebase:', error);
+                if (callback) callback(error, null);
+            });
+    });
 }
 
 // Reset inactivity timer
@@ -469,13 +508,15 @@ function handleLogin(e) {
         return;
     }
     
-    console.log('Attempting login with username:', username);
-    
-    // البحث عن المستخدم في Firebase
-    const usersRef = database.ref('users');
-    
-    usersRef.once('value')
-        .then((snapshot) => {
+    // انتظار Firebase Auth قبل تسجيل الدخول
+    waitForFirebaseAuth(() => {
+        console.log('Attempting login with username:', username);
+        
+        // البحث عن المستخدم في Firebase
+        const usersRef = database.ref('users');
+        
+        usersRef.once('value')
+            .then((snapshot) => {
             const usersData = snapshot.val();
             console.log('Users data from Firebase:', usersData);
             
@@ -524,6 +565,7 @@ function handleLogin(e) {
             showLoginError('حدث خطأ في الاتصال: ' + error.message);
             resetLoginButton();
         });
+    }); // نهاية waitForFirebaseAuth
 }
 
 function showLoginError(message) {
@@ -549,30 +591,32 @@ function createDefaultAdminIfNeeded() {
         return;
     }
     
-    const usersRef = database.ref('users');
-    
-    usersRef.once('value')
-        .then((snapshot) => {
-            const usersData = snapshot.val();
-            
-            // التحقق من وجود مستخدم admin
-            let adminExists = false;
-            if (usersData) {
-                Object.values(usersData).forEach((user) => {
-                    if (user.username === 'admin') {
-                        adminExists = true;
-                    }
-                });
-            }
-            
-            if (!adminExists) {
-                console.log('Creating default admin user...');
-                const defaultAdmin = {
-                    id: 'admin_' + Date.now(),
-                    username: 'admin',
-                    displayName: 'مدير النظام',
-                    password: '01009036812',
-                    role: 'admin',
+    // انتظار Firebase Auth قبل التحقق من المستخدمين
+    waitForFirebaseAuth(() => {
+        const usersRef = database.ref('users');
+        
+        usersRef.once('value')
+            .then((snapshot) => {
+                const usersData = snapshot.val();
+                
+                // التحقق من وجود مستخدم admin
+                let adminExists = false;
+                if (usersData) {
+                    Object.values(usersData).forEach((user) => {
+                        if (user.username === 'admin') {
+                            adminExists = true;
+                        }
+                    });
+                }
+                
+                if (!adminExists) {
+                    console.log('Creating default admin user...');
+                    const defaultAdmin = {
+                        id: 'admin_' + Date.now(),
+                        username: 'admin',
+                        displayName: 'مدير النظام',
+                        password: '01009036812',
+                        role: 'admin',
                     gender: 'male',
                     avatar: 'male1',
                     permissions: ['edit', 'delete', 'import', 'export', 'print'],
@@ -593,6 +637,7 @@ function createDefaultAdminIfNeeded() {
         .catch((error) => {
             console.error('Error checking users:', error);
         });
+    }); // نهاية waitForFirebaseAuth
 }
 
 function handleLogout() {
