@@ -1006,27 +1006,40 @@ function initFirebase() {
         console.log('Firebase initialized successfully');
         
         // Anonymous Authentication لتفعيل الرول auth != null
+        let authReady = false;
+        
         auth.onAuthStateChanged(function(user) {
             if (user) {
                 console.log('Anonymous user signed in:', user.uid);
+                if (!authReady) {
+                    authReady = true;
+                    firebaseReady = true;
+                    firebaseReadyCallbacks.forEach(cb => cb());
+                    firebaseReadyCallbacks = [];
+                }
+            }
+        });
+        
+        // Timeout لو مفيش response من Firebase Auth
+        // معناها النت فاصل أو Firebase مش متاح
+        setTimeout(() => {
+            if (!authReady) {
+                console.log('[Offline Mode] Firebase Auth غير متاح - التشغيل بدون نت');
                 firebaseReady = true;
                 firebaseReadyCallbacks.forEach(cb => cb());
                 firebaseReadyCallbacks = [];
-            } else {
-                console.log('Signing in anonymously...');
-                auth.signInAnonymously().catch(function(error) {
-                    console.error('Anonymous sign-in error:', error);
-                    // في حالة فشل Anonymous Auth، نحاول مرة أخرى
-                    setTimeout(() => auth.signInAnonymously(), 1000);
-                });
             }
-        });
+        }, 5000); // 5 ثواني timeout
         
         return true;
     } catch (error) {
         console.error('Firebase initialization error:', error);
-        alert('خطأ في تهيئة Firebase: ' + error.message);
-        return false;
+        // Firebase غير متاح - التشغيل في وضع أوفلاين
+        console.log('[Offline Mode] Firebase غير متاح - التشغيل في وضع أوفلاين');
+        firebaseReady = true;
+        firebaseReadyCallbacks.forEach(cb => cb());
+        firebaseReadyCallbacks = [];
+        return true; // نرجع true عشان التطبيق يشتغل
     }
 }
 
@@ -1143,10 +1156,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize offline system first
     await initOfflineSystem();
     
+    // Check online status
+    if (!navigator.onLine) {
+        console.log('[Offline Mode] لا يوجد اتصال بالإنترنت');
+    }
+    
     try {
         const firebaseInitialized = initFirebase();
         if (!firebaseInitialized) {
-            showMessage('فشل في تهيئة Firebase. تأكد من الإعدادات');
+            if (!navigator.onLine) {
+                showMessage('لا يوجد اتصال بالإنترنت. النظام سيعمل في وضع أوفلاين.');
+            } else {
+                showMessage('فشل في تهيئة Firebase. تأكد من الإعدادات.');
+            }
             return;
         }
         console.log('Firebase initialized successfully');
@@ -1391,15 +1413,21 @@ function handleLogin(e) {
     
     // التحقق من وجود Firebase
     if (!database) {
-        showLoginError('خطأ: Firebase غير مهيأ. تأكد من الإعدادات');
-        console.error('Firebase database not initialized');
-        resetLoginButton();
+        // تشغيل وضع أوفلاين
+        handleOfflineLogin(username, password);
         return;
     }
     
     // انتظار Firebase Auth قبل تسجيل الدخول
     waitForFirebaseAuth(() => {
         console.log('Attempting login with username:', username);
+        
+        // التحقق من الاتصال
+        if (!navigator.onLine) {
+            console.log('[Offline] لا يوجد اتصال - استخدام البيانات المحلية');
+            handleOfflineLogin(username, password);
+            return;
+        }
         
         // البحث عن المستخدم في Firebase
         const usersRef = database.ref('users');
@@ -1408,6 +1436,11 @@ function handleLogin(e) {
             .then((snapshot) => {
             const usersData = snapshot.val();
             console.log('Users data from Firebase:', usersData);
+            
+            // حفظ المستخدمين محلياً للاستخدام الأوفلاين
+            if (usersData) {
+                localStorage.setItem('local_users', JSON.stringify(usersData));
+            }
             
             let foundUser = null;
             let userKey = null;
@@ -1447,16 +1480,60 @@ function handleLogin(e) {
                 setTimeout(() => showMainPage(), 500);
             } else {
                 console.log('User not found or incorrect password');
-                showLoginError('اسم المستخدم أو كلمة المرور غير صحيحة');
-                resetLoginButton();
+                // حاول من البيانات المحلية
+                handleOfflineLogin(username, password);
             }
         })
         .catch((error) => {
             console.error('Login error:', error);
-            showLoginError('حدث خطأ في الاتصال: ' + error.message);
-            resetLoginButton();
+            // محاولة الدخول أوفلاين
+            handleOfflineLogin(username, password);
         });
     }); // نهاية waitForFirebaseAuth
+}
+
+// تسجيل الدخول في وضع أوفلاين
+function handleOfflineLogin(username, password) {
+    console.log('[Offline Login] محاولة تسجيل الدخول محلياً');
+    
+    const localUsers = localStorage.getItem('local_users');
+    if (!localUsers) {
+        showLoginError('لا توجد بيانات مستخدمين محلياً. يجب الاتصال بالإنترنت أولاً.');
+        resetLoginButton();
+        return;
+    }
+    
+    try {
+        const usersData = JSON.parse(localUsers);
+        let foundUser = null;
+        let userKey = null;
+        
+        Object.keys(usersData).forEach((key) => {
+            const user = usersData[key];
+            if ((user.username || '').trim() === username.trim() && 
+                (user.password || '').trim() === password.trim()) {
+                foundUser = user;
+                userKey = key;
+            }
+        });
+        
+        if (foundUser) {
+            console.log('[Offline Login] تم العثور على المستخدم:', foundUser.displayName || foundUser.username);
+            currentUser = { ...foundUser, firebaseKey: userKey };
+            localStorage.setItem(DB_KEYS.CURRENT_USER, JSON.stringify(currentUser));
+            resetLoginButton();
+            showMessage('تم تسجيل الدخول بنجاح! (وضع أوفلاين)', 'success');
+            applyRandomColors();
+            updateButtonsByPermissions();
+            setTimeout(() => showMainPage(), 500);
+        } else {
+            showLoginError('اسم المستخدم أو كلمة المرور غير صحيحة');
+            resetLoginButton();
+        }
+    } catch (error) {
+        showLoginError('خطأ في قراءة البيانات المحلية');
+        resetLoginButton();
+    }
 }
 
 function showLoginError(message) {
