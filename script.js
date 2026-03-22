@@ -4,6 +4,315 @@
  ***********************/
 
 // ==========================================
+// OFFLINE SUPPORT SYSTEM
+// ==========================================
+const OFFLINE_KEY = 'offline_queue';
+const LOCAL_DB_KEY = 'local_database';
+const LAST_SYNC_KEY = 'last_sync';
+
+// Initialize IndexedDB
+let localDB = null;
+const DB_NAME = 'DentTreasuryDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'offlineData';
+
+function initLocalDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            localDB = request.result;
+            resolve(localDB);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('operations')) {
+                db.createObjectStore('operations', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('data')) {
+                db.createObjectStore('data', { keyPath: 'key' });
+            }
+        };
+    });
+}
+
+// Save operation to offline queue
+function queueOfflineOperation(operation) {
+    return new Promise((resolve, reject) => {
+        if (!localDB) {
+            initLocalDB().then(() => queueOfflineOperation(operation).then(resolve).catch(reject));
+            return;
+        }
+        
+        const transaction = localDB.transaction(['operations'], 'readwrite');
+        const store = transaction.objectStore('operations');
+        
+        const opData = {
+            ...operation,
+            timestamp: new Date().toISOString(),
+            synced: false
+        };
+        
+        const request = store.add(opData);
+        request.onsuccess = () => {
+            updatePendingCount();
+            resolve(request.result);
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Get pending operations
+function getPendingOperations() {
+    return new Promise((resolve, reject) => {
+        if (!localDB) {
+            initLocalDB().then(() => getPendingOperations().then(resolve).catch(reject));
+            return;
+        }
+        
+        const transaction = localDB.transaction(['operations'], 'readonly');
+        const store = transaction.objectStore('operations');
+        const request = store.getAll();
+        
+        request.onsuccess = () => resolve(request.result.filter(op => !op.synced));
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Mark operation as synced
+function markOperationSynced(id) {
+    return new Promise((resolve, reject) => {
+        if (!localDB) return reject('DB not initialized');
+        
+        const transaction = localDB.transaction(['operations'], 'readwrite');
+        const store = transaction.objectStore('operations');
+        const getRequest = store.get(id);
+        
+        getRequest.onsuccess = () => {
+            const op = getRequest.result;
+            if (op) {
+                op.synced = true;
+                const updateRequest = store.put(op);
+                updateRequest.onsuccess = () => {
+                    updatePendingCount();
+                    resolve();
+                };
+                updateRequest.onerror = () => reject(updateRequest.error);
+            }
+        };
+    });
+}
+
+// Clear synced operations
+function clearSyncedOperations() {
+    return new Promise((resolve, reject) => {
+        if (!localDB) return resolve();
+        
+        const transaction = localDB.transaction(['operations'], 'readwrite');
+        const store = transaction.objectStore('operations');
+        const request = store.openCursor();
+        
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                if (cursor.value.synced) {
+                    cursor.delete();
+                }
+                cursor.continue();
+            } else {
+                resolve();
+            }
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Save data locally
+function saveDataLocally(key, data) {
+    return new Promise((resolve, reject) => {
+        if (!localDB) {
+            initLocalDB().then(() => saveDataLocally(key, data).then(resolve).catch(reject));
+            return;
+        }
+        
+        const transaction = localDB.transaction(['data'], 'readwrite');
+        const store = transaction.objectStore('data');
+        const request = store.put({ key, data, updatedAt: new Date().toISOString() });
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Get data locally
+function getLocalData(key) {
+    return new Promise((resolve, reject) => {
+        if (!localDB) {
+            initLocalDB().then(() => getLocalData(key).then(resolve).catch(reject));
+            return;
+        }
+        
+        const transaction = localDB.transaction(['data'], 'readonly');
+        const store = transaction.objectStore('data');
+        const request = store.get(key);
+        
+        request.onsuccess = () => resolve(request.result?.data);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Sync pending operations to Firebase
+async function syncPendingOperations() {
+    if (!navigator.onLine) {
+        notifications.warning('لا يوجد اتصال بالإنترنت');
+        return;
+    }
+    
+    const syncBtn = document.getElementById('manual-sync-btn');
+    if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.querySelector('i').classList.add('fa-spin');
+    }
+    
+    const operations = await getPendingOperations();
+    if (operations.length === 0) {
+        notifications.info('لا توجد عمليات معلقة للمزامنة');
+        if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.querySelector('i').classList.remove('fa-spin');
+        }
+        return;
+    }
+    
+    console.log(`[Sync] جاري مزامنة ${operations.length} عملية معلقة...`);
+    notifications.info(`جاري مزامنة ${operations.length} عملية...`);
+    
+    for (const op of operations) {
+        try {
+            await syncOperation(op);
+            await markOperationSynced(op.id);
+        } catch (error) {
+            console.error(`[Sync] فشل في مزامنة العملية:`, error);
+        }
+    }
+    
+    await clearSyncedOperations();
+    localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+    
+    console.log('[Sync] تمت المزامنة بنجاح!');
+    notifications.success(`تمت مزامنة ${operations.length} عملية بنجاح!`);
+    
+    // Reload data after sync
+    loadDatabase('cash');
+    loadDatabase('unjustified');
+    
+    if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.querySelector('i').classList.remove('fa-spin');
+        syncBtn.style.display = 'none';
+    }
+}
+
+// Sync single operation
+async function syncOperation(operation) {
+    switch (operation.type) {
+        case 'add_cash':
+            await database.ref('cash_receipts').push(operation.data);
+            break;
+        case 'update_cash':
+            await database.ref(`cash_receipts/${operation.key}`).update(operation.data);
+            break;
+        case 'delete_cash':
+            await database.ref(`cash_receipts/${operation.key}`).remove();
+            break;
+        case 'add_unjustified':
+            await database.ref('unjustified_payments').push(operation.data);
+            break;
+        case 'update_unjustified':
+            await database.ref(`unjustified_payments/${operation.key}`).update(operation.data);
+            break;
+        case 'delete_unjustified':
+            await database.ref(`unjustified_payments/${operation.key}`).remove();
+            break;
+        case 'add_user':
+            await database.ref('users').push(operation.data);
+            break;
+        case 'update_user':
+            await database.ref(`users/${operation.key}`).update(operation.data);
+            break;
+        case 'delete_user':
+            await database.ref(`users/${operation.key}`).remove();
+            break;
+    }
+}
+
+// Update pending operations count badge
+function updatePendingCount() {
+    getPendingOperations().then(operations => {
+        const badge = document.getElementById('pending-sync-badge');
+        const syncBtn = document.getElementById('manual-sync-btn');
+        
+        if (badge) {
+            if (operations.length > 0) {
+                badge.textContent = operations.length;
+                badge.style.display = 'inline';
+                // Show sync button if online and has pending operations
+                if (syncBtn && navigator.onLine) {
+                    syncBtn.style.display = '';
+                }
+            } else {
+                badge.style.display = 'none';
+                if (syncBtn) {
+                    syncBtn.style.display = 'none';
+                }
+            }
+        }
+    });
+}
+
+// Check online status
+function isOnline() {
+    return navigator.onLine;
+}
+
+// Show/hide offline indicator
+function updateOnlineStatus() {
+    const indicator = document.getElementById('online-status');
+    if (indicator) {
+        if (navigator.onLine) {
+            indicator.className = 'online-status online';
+            indicator.innerHTML = '<i class="fas fa-wifi"></i> متصل';
+        } else {
+            indicator.className = 'online-status offline';
+            indicator.innerHTML = '<i class="fas fa-wifi-slash"></i> غير متصل - وضع أوفلاين';
+        }
+    }
+}
+
+// Initialize offline system
+async function initOfflineSystem() {
+    await initLocalDB();
+    updateOnlineStatus();
+    updatePendingCount();
+    
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+        console.log('[Offline] تم استعادة الاتصال! جاري المزامنة...');
+        notifications.info('تم استعادة الاتصال! جاري المزامنة...');
+        updateOnlineStatus();
+        syncPendingOperations();
+    });
+    
+    window.addEventListener('offline', () => {
+        console.log('[Offline] انقطع الاتصال! يعمل في وضع أوفلاين...');
+        notifications.warning('انقطع الاتصال! يعمل في وضع أوفلاين...');
+        updateOnlineStatus();
+    });
+}
+
+// ==========================================
 // THEME SYSTEM - Dark Mode & Dynamic Colors
 // ==========================================
 const THEME_KEY = 'payment_theme';
@@ -830,7 +1139,10 @@ document.addEventListener('click', resetInactivityTimer);
 document.addEventListener('scroll', resetInactivityTimer);
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize offline system first
+    await initOfflineSystem();
+    
     try {
         const firebaseInitialized = initFirebase();
         if (!firebaseInitialized) {
@@ -843,6 +1155,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             createDefaultAdminIfNeeded();
         }, 1000);
+        
+        // Sync any pending operations
+        if (navigator.onLine) {
+            syncPendingOperations();
+        }
         
         setupEventListeners();
         checkLoginStatus();
@@ -1580,26 +1897,65 @@ function doSaveCashReceipt(isPrint) {
     if (editingId && editingFirebaseKey) {
         // تحديث سجل موجود
         console.log('Updating existing record with key:', editingFirebaseKey);
-        const path = 'cash_receipts/' + editingFirebaseKey;
-        updateInFirebase(path, receiptData, (error) => {
-            if (error) {
-                showMessage('حدث خطأ في تحديث البيانات');
-                console.error(error);
-            } else {
-                finishSaveCashReceipt(receiptData, isPrint);
-            }
-        });
+        
+        if (!navigator.onLine) {
+            // Save offline
+            queueOfflineOperation({
+                type: 'update_cash',
+                key: editingFirebaseKey,
+                data: receiptData
+            });
+            receiptData._offline = true;
+            finishSaveCashReceipt(receiptData, isPrint);
+            notifications.info('تم الحفظ محلياً - سيتم المزامنة عند استعادة الاتصال');
+        } else {
+            const path = 'cash_receipts/' + editingFirebaseKey;
+            updateInFirebase(path, receiptData, (error) => {
+                if (error) {
+                    // Save offline if Firebase fails
+                    queueOfflineOperation({
+                        type: 'update_cash',
+                        key: editingFirebaseKey,
+                        data: receiptData
+                    });
+                    receiptData._offline = true;
+                    finishSaveCashReceipt(receiptData, isPrint);
+                    notifications.warning('فشل الاتصال - تم الحفظ محلياً');
+                } else {
+                    finishSaveCashReceipt(receiptData, isPrint);
+                }
+            });
+        }
     } else {
         // إضافة سجل جديد
-        saveToFirebase('cash_receipts', receiptData, (error, key) => {
-            if (error) {
-                showMessage('حدث خطأ في حفظ البيانات');
-                console.error(error);
-            } else {
-                receiptData.firebaseKey = key;
-                finishSaveCashReceipt(receiptData, isPrint);
-            }
-        });
+        if (!navigator.onLine) {
+            // Save offline
+            receiptData.id = Date.now();
+            queueOfflineOperation({
+                type: 'add_cash',
+                data: receiptData
+            });
+            receiptData._offline = true;
+            finishSaveCashReceipt(receiptData, isPrint);
+            notifications.info('تم الحفظ محلياً - سيتم المزامنة عند استعادة الاتصال');
+        } else {
+            saveToFirebase('cash_receipts', receiptData, (error, key) => {
+                if (error) {
+                    // Save offline if Firebase fails
+                    receiptData.id = Date.now();
+                    queueOfflineOperation({
+                        type: 'add_cash',
+                        data: receiptData
+                    });
+                    receiptData._offline = true;
+                    finishSaveCashReceipt(receiptData, isPrint);
+                    notifications.warning('فشل الاتصال - تم الحفظ محلياً');
+                } else {
+                    receiptData.firebaseKey = key;
+                    finishSaveCashReceipt(receiptData, isPrint);
+                }
+            });
+        }
     }
     
     return receiptData;
@@ -1689,26 +2045,61 @@ function saveUnjustified(isPrint = false) {
     // Save to Firebase
     if (editingId && editingFirebaseKey) {
         // تحديث سجل موجود
-        const path = 'unjustified_payments/' + editingFirebaseKey;
-        updateInFirebase(path, paymentData, (error) => {
-            if (error) {
-                showMessage('حدث خطأ في تحديث البيانات');
-                console.error(error);
-            } else {
-                finishSaveUnjustified(paymentData, isPrint);
-            }
-        });
+        
+        if (!navigator.onLine) {
+            queueOfflineOperation({
+                type: 'update_unjustified',
+                key: editingFirebaseKey,
+                data: paymentData
+            });
+            paymentData._offline = true;
+            finishSaveUnjustified(paymentData, isPrint);
+            notifications.info('تم الحفظ محلياً - سيتم المزامنة عند استعادة الاتصال');
+        } else {
+            const path = 'unjustified_payments/' + editingFirebaseKey;
+            updateInFirebase(path, paymentData, (error) => {
+                if (error) {
+                    queueOfflineOperation({
+                        type: 'update_unjustified',
+                        key: editingFirebaseKey,
+                        data: paymentData
+                    });
+                    paymentData._offline = true;
+                    finishSaveUnjustified(paymentData, isPrint);
+                    notifications.warning('فشل الاتصال - تم الحفظ محلياً');
+                } else {
+                    finishSaveUnjustified(paymentData, isPrint);
+                }
+            });
+        }
     } else {
         // إضافة سجل جديد
-        saveToFirebase('unjustified_payments', paymentData, (error, key) => {
-            if (error) {
-                showMessage('حدث خطأ في حفظ البيانات');
-                console.error(error);
-            } else {
-                paymentData.firebaseKey = key;
-                finishSaveUnjustified(paymentData, isPrint);
-            }
-        });
+        if (!navigator.onLine) {
+            paymentData.id = Date.now();
+            queueOfflineOperation({
+                type: 'add_unjustified',
+                data: paymentData
+            });
+            paymentData._offline = true;
+            finishSaveUnjustified(paymentData, isPrint);
+            notifications.info('تم الحفظ محلياً - سيتم المزامنة عند استعادة الاتصال');
+        } else {
+            saveToFirebase('unjustified_payments', paymentData, (error, key) => {
+                if (error) {
+                    paymentData.id = Date.now();
+                    queueOfflineOperation({
+                        type: 'add_unjustified',
+                        data: paymentData
+                    });
+                    paymentData._offline = true;
+                    finishSaveUnjustified(paymentData, isPrint);
+                    notifications.warning('فشل الاتصال - تم الحفظ محلياً');
+                } else {
+                    paymentData.firebaseKey = key;
+                    finishSaveUnjustified(paymentData, isPrint);
+                }
+            });
+        }
     }
     
     return paymentData;
@@ -2001,18 +2392,32 @@ function deleteReceipt(id, type) {
                     const name = deletedData.payerName || deletedData.name || 'غير معروف';
                     logAudit('delete', `حذف إيصال ${receiptType}: ${receiptNo} - ${name}`, deletedData);
                     
-                    return ref.child(keyToDelete).remove();
+                    // Delete from Firebase
+                    return ref.child(keyToDelete).remove().then(() => keyToDelete);
                 } else {
                     throw new Error('السجل غير موجود');
                 }
             })
-            .then(() => {
+            .then((keyToDelete) => {
                 loadDatabase(type);
-                showMessage('تم الحذف بنجاح');
+                if (!navigator.onLine) {
+                    // Queue delete operation if offline
+                    queueOfflineOperation({
+                        type: type === 'cash' ? 'delete_cash' : 'delete_unjustified',
+                        key: keyToDelete
+                    });
+                    notifications.info('تم الحذف محلياً - سيتم المزامنة عند استعادة الاتصال');
+                } else {
+                    showMessage('تم الحذف بنجاح');
+                }
             })
             .catch((error) => {
                 console.error('Error deleting:', error);
-                showMessage('حدث خطأ في الحذف: ' + error.message);
+                if (!navigator.onLine) {
+                    notifications.warning('انقطع الاتصال - سيتم الحذف عند استعادة الاتصال');
+                } else {
+                    showMessage('حدث خطأ في الحذف: ' + error.message);
+                }
             });
     });
 }
