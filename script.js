@@ -3,6 +3,606 @@
  * إدارة الدفع النقدي
  ***********************/
 
+// ==========================================
+// THEME SYSTEM - Dark Mode & Dynamic Colors
+// ==========================================
+const THEME_KEY = 'payment_theme';
+const COLORS_KEY = 'payment_colors';
+
+const COLOR_PALETTES = [
+    { primary: '#1565c0', secondary: '#1976d2', accent: '#42a5f5', bg: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)' },
+    { primary: '#6a1b9a', secondary: '#7b1fa2', accent: '#9c27b0', bg: 'linear-gradient(135deg, #4a148c 0%, #6a1b9a 50%, #7b1fa2 100%)' },
+    { primary: '#00695c', secondary: '#00796b', accent: '#26a69a', bg: 'linear-gradient(135deg, #004d40 0%, #00695c 50%, #00796b 100%)' },
+    { primary: '#c62828', secondary: '#d32f2f', accent: '#ef5350', bg: 'linear-gradient(135deg, #b71c1c 0%, #c62828 50%, #d32f2f 100%)' },
+    { primary: '#1565c0', secondary: '#0288d1', accent: '#03a9f4', bg: 'linear-gradient(135deg, #01579b 0%, #0288d1 50%, #03a9f4 100%)' },
+    { primary: '#4527a0', secondary: '#512da8', accent: '#673ab7', bg: 'linear-gradient(135deg, #311b92 0%, #4527a0 50%, #512da8 100%)' },
+    { primary: '#2e7d32', secondary: '#388e3c', accent: '#43a047', bg: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%)' },
+    { primary: '#e65100', secondary: '#f57c00', accent: '#ff9800', bg: 'linear-gradient(135deg, #bf360c 0%, #e65100 50%, #f57c00 100%)' },
+    { primary: '#00838f', secondary: '#0097a7', accent: '#26c6da', bg: 'linear-gradient(135deg, #006064 0%, #00838f 50%, #0097a7 100%)' },
+    { primary: '#5d4037', secondary: '#6d4c41', accent: '#8d6e63', bg: 'linear-gradient(135deg, #3e2723 0%, #5d4037 50%, #6d4c41 100%)' },
+];
+
+function applyRandomColors() {
+    const palette = COLOR_PALETTES[Math.floor(Math.random() * COLOR_PALETTES.length)];
+    document.documentElement.style.setProperty('--primary-color', palette.primary);
+    document.documentElement.style.setProperty('--secondary-color', palette.secondary);
+    document.documentElement.style.setProperty('--accent-color', palette.accent);
+    
+    // Convert hex to RGB
+    const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '21, 101, 192';
+    };
+    
+    document.documentElement.style.setProperty('--primary-color-rgb', hexToRgb(palette.primary));
+    document.documentElement.style.setProperty('--secondary-color-rgb', hexToRgb(palette.secondary));
+    document.documentElement.style.setProperty('--accent-color-rgb', hexToRgb(palette.accent));
+    
+    // Apply background gradient
+    const style = document.createElement('style');
+    style.id = 'dynamic-bg-style';
+    const oldStyle = document.getElementById('dynamic-bg-style');
+    if (oldStyle) oldStyle.remove();
+    
+    style.textContent = `body { background: ${palette.bg} !important; }
+        .theme-toggle { background: ${palette.primary}; border-color: ${palette.secondary}; }
+        .theme-toggle:hover { background: ${palette.secondary}; }
+        .theme-toggle i { color: white; }
+        .btn-primary { background: linear-gradient(135deg, ${palette.primary}, ${palette.secondary}); border-color: ${palette.secondary}; }
+        .btn-primary:hover { background: ${palette.secondary}; box-shadow: 0 8px 25px rgba(${hexToRgb(palette.primary)}, 0.4), 0 0 20px rgba(${hexToRgb(palette.primary)}, 0.3); }
+        .nav-btn.active { background: linear-gradient(135deg, ${palette.primary}, ${palette.secondary}); box-shadow: 0 8px 25px rgba(${hexToRgb(palette.primary)}, 0.4); }
+        .action-btn.print { color: ${palette.primary}; }
+        .action-btn.print:hover { background: ${palette.primary}; color: white; box-shadow: 0 4px 15px rgba(${hexToRgb(palette.primary)}, 0.4); }
+        .pagination-btn.active { background: linear-gradient(135deg, ${palette.primary}, ${palette.secondary}); border-color: ${palette.secondary}; box-shadow: 0 4px 15px rgba(${hexToRgb(palette.primary)}, 0.4); }
+        .pagination-btn:hover:not(:disabled) { background: rgba(${hexToRgb(palette.primary)}, 0.15); border-color: ${palette.primary}; }
+        .notification-success { border-right: 4px solid ${palette.primary}; }
+        .notification-success .notification-icon { color: ${palette.primary}; }
+        .btn-animated:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.25), 0 0 25px rgba(${hexToRgb(palette.primary)}, 0.3); }`;
+    document.head.appendChild(style);
+    
+    localStorage.setItem(COLORS_KEY, JSON.stringify(palette));
+    return palette;
+}
+
+function loadSavedColors() {
+    const saved = localStorage.getItem(COLORS_KEY);
+    const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '21, 101, 192';
+    };
+    
+    if (saved) {
+        try {
+            const palette = JSON.parse(saved);
+            document.documentElement.style.setProperty('--primary-color', palette.primary);
+            document.documentElement.style.setProperty('--secondary-color', palette.secondary);
+            document.documentElement.style.setProperty('--accent-color', palette.accent);
+            document.documentElement.style.setProperty('--primary-color-rgb', hexToRgb(palette.primary));
+            document.documentElement.style.setProperty('--secondary-color-rgb', hexToRgb(palette.secondary));
+            document.documentElement.style.setProperty('--accent-color-rgb', hexToRgb(palette.accent));
+            
+            if (palette.bg) {
+                const style = document.createElement('style');
+                style.id = 'dynamic-bg-style';
+                style.textContent = `body { background: ${palette.bg} !important; }
+                    .theme-toggle { background: ${palette.primary}; border-color: ${palette.secondary}; }
+                    .theme-toggle:hover { background: ${palette.secondary}; }
+                    .theme-toggle i { color: white; }
+                    .btn-primary { background: linear-gradient(135deg, ${palette.primary}, ${palette.secondary}); border-color: ${palette.secondary}; }
+                    .btn-primary:hover { background: ${palette.secondary}; box-shadow: 0 8px 25px rgba(${hexToRgb(palette.primary)}, 0.4), 0 0 20px rgba(${hexToRgb(palette.primary)}, 0.3); }
+                    .nav-btn.active { background: linear-gradient(135deg, ${palette.primary}, ${palette.secondary}); box-shadow: 0 8px 25px rgba(${hexToRgb(palette.primary)}, 0.4); }
+                    .action-btn.print { color: ${palette.primary}; }
+                    .action-btn.print:hover { background: ${palette.primary}; color: white; box-shadow: 0 4px 15px rgba(${hexToRgb(palette.primary)}, 0.4); }
+                    .pagination-btn.active { background: linear-gradient(135deg, ${palette.primary}, ${palette.secondary}); border-color: ${palette.secondary}; box-shadow: 0 4px 15px rgba(${hexToRgb(palette.primary)}, 0.4); }
+                    .pagination-btn:hover:not(:disabled) { background: rgba(${hexToRgb(palette.primary)}, 0.15); border-color: ${palette.primary}; }
+                    .notification-success { border-right: 4px solid ${palette.primary}; }
+                    .notification-success .notification-icon { color: ${palette.primary}; }
+                    .btn-animated:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.25), 0 0 25px rgba(${hexToRgb(palette.primary)}, 0.3); }`;
+                if (!document.getElementById('dynamic-bg-style')) {
+                    document.head.appendChild(style);
+                }
+            }
+        } catch (e) {
+            applyRandomColors();
+        }
+    } else {
+        applyRandomColors();
+    }
+}
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+        html.removeAttribute('data-theme');
+        localStorage.setItem(THEME_KEY, 'light');
+    } else {
+        html.setAttribute('data-theme', 'dark');
+        localStorage.setItem(THEME_KEY, 'dark');
+    }
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else if (savedTheme === 'light') {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
+
+// Initialize theme on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    loadTheme();
+    loadSavedColors();
+    
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+});
+
+// ==========================================
+// ADVANCED NOTIFICATIONS SYSTEM
+// ==========================================
+class NotificationSystem {
+    constructor() {
+        this.container = null;
+        this.init();
+    }
+
+    init() {
+        this.container = document.createElement('div');
+        this.container.id = 'notification-container';
+        this.container.className = 'notification-container';
+        document.body.appendChild(this.container);
+    }
+
+    show(message, type = 'info', duration = 4000) {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-times-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
+
+        const colors = {
+            success: 'hsl(140, 70%, 50%)',
+            error: 'hsl(0, 75%, 50%)',
+            warning: 'hsl(35, 85%, 50%)',
+            info: 'hsl(210, 80%, 50%)'
+        };
+
+        notification.innerHTML = `
+            <div class="notification-icon" style="background: ${colors[type]};">
+                <i class="fas ${icons[type]}"></i>
+            </div>
+            <div class="notification-content">
+                <span class="notification-message">${message}</span>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        this.container.appendChild(notification);
+
+        if (duration > 0) {
+            setTimeout(() => {
+                notification.classList.add('notification-hide');
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
+        }
+
+        return notification;
+    }
+
+    success(message, duration = 4000) { return this.show(message, 'success', duration); }
+    error(message, duration = 5000) { return this.show(message, 'error', duration); }
+    warning(message, duration = 4000) { return this.show(message, 'warning', duration); }
+    info(message, duration = 4000) { return this.show(message, 'info', duration); }
+
+    removeAll() { this.container.innerHTML = ''; }
+}
+
+const notifications = new NotificationSystem();
+
+// ==========================================
+// LOADING OVERLAY SYSTEM
+// ==========================================
+class LoadingOverlay {
+    constructor() {
+        this.overlay = null;
+        this.init();
+    }
+
+    init() {
+        this.overlay = document.createElement('div');
+        this.overlay.id = 'loading-overlay';
+        this.overlay.className = 'loading-overlay';
+        this.overlay.innerHTML = `
+            <div class="loading-spinner-container">
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <p class="loading-text">جاري التحميل...</p>
+            </div>
+        `;
+        document.body.appendChild(this.overlay);
+    }
+
+    show(message = 'جاري التحميل...') {
+        this.overlay.querySelector('.loading-text').textContent = message;
+        this.overlay.classList.add('active');
+    }
+
+    hide() {
+        this.overlay.classList.remove('active');
+    }
+
+    updateMessage(message) {
+        this.overlay.querySelector('.loading-text').textContent = message;
+    }
+}
+
+const loadingOverlay = new LoadingOverlay();
+
+// ==========================================
+// CACHING SYSTEM
+// ==========================================
+class DataCache {
+    constructor() {
+        this.cache = new Map();
+        this.cacheTimeout = 5 * 60 * 1000;
+    }
+
+    set(key, data) {
+        this.cache.set(key, { data: data, timestamp: Date.now() });
+    }
+
+    get(key) {
+        const cached = this.cache.get(key);
+        if (!cached) return null;
+        if (Date.now() - cached.timestamp > this.cacheTimeout) {
+            this.cache.delete(key);
+            return null;
+        }
+        return cached.data;
+    }
+
+    has(key) { return this.cache.has(key); }
+    invalidate(key) { this.cache.delete(key); }
+    invalidateAll() { this.cache.clear(); }
+}
+
+const dataCache = new DataCache();
+
+// ==========================================
+// PAGINATION SYSTEM
+// ==========================================
+class Pagination {
+    constructor(options = {}) {
+        this.currentPage = 1;
+        this.totalItems = 0;
+        this.itemsPerPageOptions = [10, 25, 50, 100];
+        this.itemsPerPage = options.itemsPerPage || 15;
+        this.containerId = options.containerId || 'pagination-controls';
+        this.onPageChange = options.onPageChange || (() => {});
+        this.instanceName = options.instanceName || 'pagination';
+    }
+
+    setTotalItems(total) {
+        this.totalItems = total;
+        this.currentPage = 1;
+    }
+
+    getTotalPages() { return Math.ceil(this.totalItems / this.itemsPerPage); }
+    getCurrentPage() { return this.currentPage; }
+
+    setItemsPerPage(count) {
+        this.itemsPerPage = count;
+        this.currentPage = Math.min(this.currentPage, this.getTotalPages() || 1);
+        this.render();
+        this.onPageChange(this.currentPage);
+    }
+
+    goToPage(page) {
+        if (page < 1 || page > this.getTotalPages()) return;
+        this.currentPage = page;
+        this.render();
+        this.onPageChange(this.currentPage);
+    }
+
+    nextPage() { this.goToPage(this.currentPage + 1); }
+    prevPage() { this.goToPage(this.currentPage - 1); }
+
+    render() {
+        const container = document.getElementById(this.containerId);
+        if (!container || this.totalItems === 0) {
+            if (container) container.innerHTML = '';
+            return;
+        }
+
+        const totalPages = this.getTotalPages();
+        
+        let html = `
+            <div class="pagination-wrapper">
+                <div class="pagination-rows-select">
+                    <label>عرض:</label>
+                    <select onchange="${this.instanceName}.setItemsPerPage(parseInt(this.value))">
+                        ${this.itemsPerPageOptions.map(opt => 
+                            `<option value="${opt}" ${opt === this.itemsPerPage ? 'selected' : ''}>${opt}</option>`
+                        ).join('')}
+                    </select>
+                    <span>صفحة</span>
+                </div>
+                <div class="pagination-info">
+                    <span>صفحة ${this.currentPage} من ${totalPages}</span>
+                    <span class="pagination-count">(${this.totalItems} سجل)</span>
+                </div>
+                <div class="pagination-controls">
+                    <button class="pagination-btn" ${this.currentPage === 1 ? 'disabled' : ''} onclick="${this.instanceName}.prevPage()">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>`;
+
+        const maxVisible = 5;
+        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+
+        if (startPage > 1) {
+            html += `<button class="pagination-btn" onclick="${this.instanceName}.goToPage(1)">1</button>`;
+            if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="pagination-btn ${i === this.currentPage ? 'active' : ''}" onclick="${this.instanceName}.goToPage(${i})">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+            html += `<button class="pagination-btn" onclick="${this.instanceName}.goToPage(${totalPages})">${totalPages}</button>`;
+        }
+
+        html += `<button class="pagination-btn" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="${this.instanceName}.nextPage()">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+            </div>`;
+        
+        container.innerHTML = html;
+    }
+
+    getPageItems(items) {
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        return items.slice(start, start + this.itemsPerPage);
+    }
+}
+
+// Pagination instances for database tables
+let cashPagination;
+let unjustifiedPagination;
+
+// Store full data for pagination
+let cashFullData = [];
+let unjustifiedFullData = [];
+
+// Initialize pagination instances
+function initPagination() {
+    cashPagination = new Pagination({
+        containerId: 'cash-pagination-controls',
+        instanceName: 'cashPagination',
+        itemsPerPage: 25,
+        onPageChange: (page) => {
+            const pageItems = cashPagination.getPageItems(cashFullData);
+            renderCashDatabasePage(pageItems);
+        }
+    });
+
+    unjustifiedPagination = new Pagination({
+        containerId: 'unjustified-pagination-controls',
+        instanceName: 'unjustifiedPagination',
+        itemsPerPage: 25,
+        onPageChange: (page) => {
+            const pageItems = unjustifiedPagination.getPageItems(unjustifiedFullData);
+            renderUnjustifiedDatabasePage(pageItems);
+        }
+    });
+}
+
+// Render only current page items for cash receipts
+function renderCashDatabasePage(receipts) {
+    const tbody = document.getElementById('cash-db-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (receipts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; padding: 20px;">لا توجد بيانات</td></tr>';
+        return;
+    }
+    
+    const baseIndex = (cashPagination.getCurrentPage() - 1) * cashPagination.itemsPerPage;
+    
+    receipts.forEach((receipt, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="action-btns">
+                    <button class="action-btn print" onclick="printReceipt(${receipt.id}, 'cash')">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    ${hasPermission('edit') ? `
+                    <button class="action-btn edit" onclick="editReceipt(${receipt.id}, 'cash')">
+                        <i class="fas fa-edit"></i>
+                    </button>` : ''}
+                    ${hasPermission('delete') ? `
+                    <button class="action-btn delete" onclick="deleteReceipt(${receipt.id}, 'cash')">
+                        <i class="fas fa-trash"></i>
+                    </button>` : ''}
+                </div>
+            </td>
+            <td><input type="checkbox" data-id="${receipt.id}"></td>
+            <td>${baseIndex + index + 1}</td>
+            <td>${receipt.receiptNo}</td>
+            <td>${receipt.payerName}</td>
+            <td>${formatDate(receipt.paymentDate)}</td>
+            <td>${formatDate(receipt.periodFrom)}</td>
+            <td>${formatDate(receipt.periodTo)}</td>
+            <td>${receipt.accounts['estabd'] || 0}</td>
+            <td>${receipt.accounts['aht'] || 0}</td>
+            <td>${receipt.accounts['sandog_tamen'] || 0}</td>
+            <td>${receipt.accounts['wheda_markabat'] || 0}</td>
+            <td>${receipt.accounts['nogaba'] || 0}</td>
+            <td>${receipt.accounts['tamenat'] || 0}</td>
+            <td><strong>${receipt.total.toFixed(2)}</strong></td>
+            <td>${receipt.createdBy || '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Render only current page items for unjustified payments
+function renderUnjustifiedDatabasePage(payments) {
+    const tbody = document.getElementById('unjustified-db-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (payments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">لا توجد بيانات</td></tr>';
+        return;
+    }
+    
+    const baseIndex = (unjustifiedPagination.getCurrentPage() - 1) * unjustifiedPagination.itemsPerPage;
+    
+    payments.forEach((payment, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="action-btns">
+                    <button class="action-btn print" onclick="printReceipt(${payment.id}, 'unjustified')">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    ${hasPermission('edit') ? `
+                    <button class="action-btn edit" onclick="editReceipt(${payment.id}, 'unjustified')">
+                        <i class="fas fa-edit"></i>
+                    </button>` : ''}
+                    ${hasPermission('delete') ? `
+                    <button class="action-btn delete" onclick="deleteReceipt(${payment.id}, 'unjustified')">
+                        <i class="fas fa-trash"></i>
+                    </button>` : ''}
+                </div>
+            </td>
+            <td><input type="checkbox" data-id="${payment.id}"></td>
+            <td>${baseIndex + index + 1}</td>
+            <td>${payment.receiptNo}</td>
+            <td>${payment.name}</td>
+            <td>${formatDate(payment.paymentDate)}</td>
+            <td><strong>${(payment.amount || 0).toFixed(2)}</strong></td>
+            <td>${payment.purpose}</td>
+            <td>${payment.createdBy || '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// ==========================================
+// BACKUP & RESTORE SYSTEM
+// ==========================================
+const BackupSystem = {
+    async createBackup() {
+        if (!hasPermission('backup')) {
+            notifications.warning('ليس لديك صلاحية النسخ الاحتياطي');
+            return;
+        }
+        loadingOverlay.show('جاري إنشاء النسخة الاحتياطية...');
+        
+        try {
+            const backupData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                createdBy: currentUser ? currentUser.displayName : 'System',
+                data: {}
+            };
+
+            const paths = ['cash_receipts', 'unjustified_payments', 'names'];
+            for (const path of paths) {
+                const snapshot = await database.ref(path).once('value');
+                backupData.data[path] = snapshot.val() || {};
+            }
+
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            loadingOverlay.hide();
+            notifications.success('تم إنشاء النسخة الاحتياطية بنجاح!');
+            logAudit('backup', 'إنشاء نسخة احتياطية', backupData);
+            
+        } catch (error) {
+            loadingOverlay.hide();
+            notifications.error('حدث خطأ: ' + error.message);
+        }
+    },
+
+    async restoreFromFile(file) {
+        if (!hasPermission('restore')) {
+            notifications.warning('ليس لديك صلاحية الاستعادة');
+            return;
+        }
+        loadingOverlay.show('جاري استعادة البيانات...');
+
+        try {
+            const text = await file.text();
+            const backupData = JSON.parse(text);
+
+            if (!backupData.version || !backupData.data) {
+                throw new Error('ملف غير صالح');
+            }
+
+            showConfirm('هل أنت متأكد من استعادة البيانات؟ سيتم استبدال جميع البيانات الحالية!', async () => {
+                loadingOverlay.updateMessage('جاري الاستعادة...');
+                
+                for (const path of ['cash_receipts', 'unjustified_payments', 'names']) {
+                    if (backupData.data[path]) {
+                        await database.ref(path).remove();
+                        await database.ref(path).set(backupData.data[path]);
+                    }
+                }
+
+                dataCache.invalidateAll();
+                loadingOverlay.hide();
+                notifications.success('تم استعادة البيانات بنجاح!');
+                logAudit('restore', 'استعادة نسخة احتياطية', { timestamp: backupData.timestamp });
+                loadDatabase('cash');
+                loadDatabase('unjustified');
+                updateNamesList();
+            });
+
+        } catch (error) {
+            loadingOverlay.hide();
+            notifications.error('حدث خطأ: ' + error.message);
+        }
+    }
+};
+
+function handleRestoreFile(input) {
+    if (input.files && input.files[0]) {
+        BackupSystem.restoreFromFile(input.files[0]);
+        input.value = '';
+    }
+}
+
 // Database Keys
 const DB_KEYS = {
     USERS: 'payment_users',
@@ -248,43 +848,45 @@ document.addEventListener('DOMContentLoaded', () => {
         checkLoginStatus();
         updateDateInputs();
         setupRealtimeListeners();
+        initPagination();
+        
+        // تحميل أسماء الأشخاص عند فتح صفحة التقرير
+        const personReportsPage = document.getElementById('person-reports');
+        if (personReportsPage) {
+            loadPersonNames();
+        }
+        
+        // مستمع لتوليد التقرير الشخصي
+        const generatePersonReportBtn = document.getElementById('generate-person-report');
+        if (generatePersonReportBtn) {
+            generatePersonReportBtn.addEventListener('click', generatePersonReport);
+        }
+        
+        // مستمع للتصدير الشخصي
+        const exportPersonReportBtn = document.getElementById('export-person-report');
+        if (exportPersonReportBtn) {
+            exportPersonReportBtn.addEventListener('click', exportPersonReport);
+        }
+        
+        // مستمع للطباعة الشخصية
+        const printPersonReportBtn = document.getElementById('print-person-report-btn');
+        if (printPersonReportBtn) {
+            printPersonReportBtn.addEventListener('click', function() {
+                const personName = document.getElementById('person-search').value.trim();
+                if (personName) {
+                    printPersonReport(personName);
+                } else {
+                    showMessage('يجب كتابة اسم الشخص');
+                }
+            });
+        }
     } catch (error) {
         console.error('Error initializing app:', error);
         showMessage('حدث خطأ في تهيئة التطبيق: ' + error.message);
     }
 });
 
-// Initialize Firebase Database with default admin
-function initializeFirebaseDatabase() {
-    // التحقق من وجود Admin في Firebase
-    getFromFirebase('users', (error, data) => {
-        if (error || !data) {
-            // إنشاء Admin افتراضي
-            const defaultAdmin = {
-                id: 'admin_' + Date.now(),
-                username: 'admin',
-                displayName: 'مدير النظام',
-                password: '681224491983',
-                role: 'admin',
-                gender: 'male',
-                avatar: 'male1',
-                permissions: ['edit', 'delete', 'import', 'export', 'print'],
-                createdAt: new Date().toISOString()
-            };
-            
-            saveToFirebase('users', defaultAdmin, (err) => {
-                if (err) {
-                    console.error('Error creating default admin:', err);
-                } else {
-                    console.log('Default admin created in Firebase');
-                }
-            });
-        }
-    });
-    
-    // تحميل الأسماء من Firebase
-    loadNamesFromFirebase();
-}
+
 
 // إعداد مستمعي التغييرات في الوقت الفعلي
 function setupRealtimeListeners() {
@@ -315,41 +917,11 @@ function setupRealtimeListeners() {
     });
 }
 
-// تحميل الأسماء من Firebase
-function loadNamesFromFirebase() {
-    getFromFirebase('names', (error, data) => {
-        if (!error && data) {
-            const names = Object.values(data).map(item => item.name);
-            updateNamesListUI(names);
-        }
-    });
-}
 
-// تحديث قائمة الأسماء في الواجهة
-function updateNamesListUI(names) {
-    const cashList = document.getElementById('names-list');
-    const unjustifiedList = document.getElementById('unjustified-names-list');
-    
-    const options = names.map(name => `<option value="${name}">`).join('');
-    
-    if (cashList) cashList.innerHTML = options;
-    if (unjustifiedList) unjustifiedList.innerHTML = options;
-}
 
-// Initialize Database
-function initializeLocalStorage() {
-    if (!localStorage.getItem(DB_KEYS.CASH_RECEIPTS)) {
-        localStorage.setItem(DB_KEYS.CASH_RECEIPTS, JSON.stringify([]));
-    }
-    
-    if (!localStorage.getItem(DB_KEYS.UNJUSTIFIED_PAYMENTS)) {
-        localStorage.setItem(DB_KEYS.UNJUSTIFIED_PAYMENTS, JSON.stringify([]));
-    }
-    
-    if (!localStorage.getItem(DB_KEYS.NAMES_LIST)) {
-        localStorage.setItem(DB_KEYS.NAMES_LIST, JSON.stringify([]));
-    }
-}
+
+
+
 
 // Setup Event Listeners
 function setupEventListeners() {
@@ -552,7 +1124,9 @@ function handleLogin(e) {
                 // حفظ في localStorage للجلسة الحالية
                 localStorage.setItem(DB_KEYS.CURRENT_USER, JSON.stringify(currentUser));
                 resetLoginButton();
-                showMessage('تم تسجيل الدخول بنجاح!');
+                showMessage('تم تسجيل الدخول بنجاح!', 'success');
+                applyRandomColors();
+                updateButtonsByPermissions();
                 setTimeout(() => showMainPage(), 500);
             } else {
                 console.log('User not found or incorrect password');
@@ -640,6 +1214,98 @@ function createDefaultAdminIfNeeded() {
     }); // نهاية waitForFirebaseAuth
 }
 
+// تحديث الأزرار حسب الصلاحيات
+function updateButtonsByPermissions() {
+    if (!currentUser) return;
+    
+    const isAdmin = currentUser.role === 'admin';
+    const perms = currentUser.permissions || [];
+    
+    // ===== صفحة الاستلام النقدي =====
+    // أزرار الطباعة في الفيد
+    const printCashReceiptBtn = document.getElementById('print-cash-receipt');
+    if (printCashReceiptBtn) {
+        printCashReceiptBtn.style.display = (isAdmin || perms.includes('print')) ? '' : 'none';
+    }
+    
+    // أزرار الفيد
+    const importExcelBtn = document.getElementById('import-excel');
+    if (importExcelBtn) {
+        importExcelBtn.style.display = (isAdmin || perms.includes('import')) ? '' : 'none';
+    }
+    
+    const exportExcelBtn = document.getElementById('export-excel');
+    if (exportExcelBtn) {
+        exportExcelBtn.style.display = (isAdmin || perms.includes('export')) ? '' : 'none';
+    }
+    
+    const backupBtn = document.getElementById('backup-btn');
+    if (backupBtn) {
+        backupBtn.style.display = (isAdmin || perms.includes('backup')) ? '' : 'none';
+    }
+    
+    const restoreBtn = document.getElementById('restore-btn');
+    if (restoreBtn) {
+        restoreBtn.style.display = (isAdmin || perms.includes('restore')) ? '' : 'none';
+    }
+    
+    const deleteSelectedBtn = document.getElementById('delete-selected');
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.style.display = (isAdmin || perms.includes('delete')) ? '' : 'none';
+    }
+    
+    // ===== صفحة مبالغ بدون وجه حق =====
+    // أزرار الطباعة في الفيد
+    const printUnjustifiedBtn = document.getElementById('print-unjustified');
+    if (printUnjustifiedBtn) {
+        printUnjustifiedBtn.style.display = (isAdmin || perms.includes('print')) ? '' : 'none';
+    }
+    
+    const unjustImportExcelBtn = document.getElementById('import-unjustified-excel');
+    if (unjustImportExcelBtn) {
+        unjustImportExcelBtn.style.display = (isAdmin || perms.includes('import')) ? '' : 'none';
+    }
+    
+    const unjustExportExcelBtn = document.getElementById('export-unjustified-excel');
+    if (unjustExportExcelBtn) {
+        unjustExportExcelBtn.style.display = (isAdmin || perms.includes('export')) ? '' : 'none';
+    }
+    
+    const unjustDeleteSelectedBtn = document.getElementById('delete-unjustified-selected');
+    if (unjustDeleteSelectedBtn) {
+        unjustDeleteSelectedBtn.style.display = (isAdmin || perms.includes('delete')) ? '' : 'none';
+    }
+    
+    // ===== إخفاء أزرار النسخ الاحتياطي والاستعادة في صفحة مبالغ بدون وجه حق =====
+    const unjustPage = document.getElementById('unjustified-db');
+    if (unjustPage) {
+        // زر النسخ الاحتياطي
+        const unjustBackupBtns = unjustPage.querySelectorAll('button[onclick*="BackupSystem.createBackup"]');
+        unjustBackupBtns.forEach(btn => {
+            btn.style.display = (isAdmin || perms.includes('backup')) ? '' : 'none';
+        });
+        
+        // زر الاستعادة
+        const unjustRestoreBtns = unjustPage.querySelectorAll('button[onclick*="restore-file"]');
+        unjustRestoreBtns.forEach(btn => {
+            btn.style.display = (isAdmin || perms.includes('restore')) ? '' : 'none';
+        });
+    }
+    
+    // ===== صفحة التقارير =====
+    const printReportBtn = document.getElementById('print-report-btn');
+    if (printReportBtn) {
+        printReportBtn.style.display = (isAdmin || perms.includes('print')) ? '' : 'none';
+    }
+    
+    const printPersonReportBtn = document.getElementById('print-person-report-btn');
+    if (printPersonReportBtn) {
+        printPersonReportBtn.style.display = (isAdmin || perms.includes('print')) ? '' : 'none';
+    }
+    
+    console.log('تم تحديث الأزرار حسب الصلاحيات:', { isAdmin, permissions: perms });
+}
+
 function handleLogout() {
     currentUser = null;
     editingId = null;
@@ -677,6 +1343,9 @@ function showMainPage() {
     if (currentUser.role === 'admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
     }
+    
+    // تحديث الأزرار حسب الصلاحيات
+    updateButtonsByPermissions();
     
     // Navigate to cash receipt page by default
     navigateTo('cash-receipt');
@@ -1112,7 +1781,7 @@ function updateNamesListWithName(name) {
         if (!names.includes(name)) {
             saveToFirebase('names', { name: name, createdAt: new Date().toISOString() }, (err) => {
                 if (!err) {
-                    loadNamesFromFirebase();
+                    updateNamesList();
                 }
             });
         }
@@ -1169,103 +1838,35 @@ function loadDatabase(type) {
 
 function renderCashDatabase(receipts) {
     console.log('renderCashDatabase called with', receipts ? receipts.length : 0, 'receipts');
-    const tbody = document.getElementById('cash-db-tbody');
-    if (!tbody) {
-        console.error('cash-db-tbody not found');
-        return;
-    }
     
-    // Ensure receipts is an array
     if (!Array.isArray(receipts)) {
         console.error('receipts is not an array:', receipts);
         receipts = [];
     }
     
-    tbody.innerHTML = '';
+    cashFullData = receipts;
     
-    if (receipts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; padding: 20px;">لا توجد بيانات</td></tr>';
-        return;
+    if (cashPagination) {
+        cashPagination.setTotalItems(receipts.length);
+        cashPagination.render();
+        const pageItems = cashPagination.getPageItems(receipts);
+        renderCashDatabasePage(pageItems);
+    } else {
+        renderCashDatabasePage(receipts);
     }
-    
-    receipts.forEach((receipt, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <div class="action-btns">
-                    <button class="action-btn print" onclick="printReceipt(${receipt.id}, 'cash')">
-                        <i class="fas fa-print"></i>
-                    </button>
-                    ${hasPermission('edit') ? `
-                    <button class="action-btn edit" onclick="editReceipt(${receipt.id}, 'cash')">
-                        <i class="fas fa-edit"></i>
-                    </button>` : ''}
-                    ${hasPermission('delete') ? `
-                    <button class="action-btn delete" onclick="deleteReceipt(${receipt.id}, 'cash')">
-                        <i class="fas fa-trash"></i>
-                    </button>` : ''}
-                </div>
-            </td>
-            <td><input type="checkbox" data-id="${receipt.id}"></td>
-            <td>${index + 1}</td>
-            <td>${receipt.receiptNo}</td>
-            <td>${receipt.payerName}</td>
-            <td>${formatDate(receipt.paymentDate)}</td>
-            <td>${formatDate(receipt.periodFrom)}</td>
-            <td>${formatDate(receipt.periodTo)}</td>
-            <td>${receipt.accounts['estabd'] || 0}</td>
-            <td>${receipt.accounts['aht'] || 0}</td>
-            <td>${receipt.accounts['sandog_tamen'] || 0}</td>
-            <td>${receipt.accounts['wheda_markabat'] || 0}</td>
-            <td>${receipt.accounts['nogaba'] || 0}</td>
-            <td>${receipt.accounts['tamenat'] || 0}</td>
-            <td><strong>${receipt.total.toFixed(2)}</strong></td>
-            <td>${receipt.createdBy || '-'}</td>
-        `;
-        tbody.appendChild(row);
-    });
 }
 
 function renderUnjustifiedDatabase(payments) {
-    const tbody = document.getElementById('unjustified-db-tbody');
-    if (!tbody) return;
+    unjustifiedFullData = payments;
     
-    tbody.innerHTML = '';
-    
-    if (payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">لا توجد بيانات</td></tr>';
-        return;
+    if (unjustifiedPagination) {
+        unjustifiedPagination.setTotalItems(payments.length);
+        unjustifiedPagination.render();
+        const pageItems = unjustifiedPagination.getPageItems(payments);
+        renderUnjustifiedDatabasePage(pageItems);
+    } else {
+        renderUnjustifiedDatabasePage(payments);
     }
-    
-    payments.forEach((payment) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <div class="action-btns">
-                    <button class="action-btn print" onclick="printReceipt(${payment.id}, 'unjustified')">
-                        <i class="fas fa-print"></i>
-                    </button>
-                    ${hasPermission('edit') ? `
-                    <button class="action-btn edit" onclick="editReceipt(${payment.id}, 'unjustified')">
-                        <i class="fas fa-edit"></i>
-                    </button>` : ''}
-                    ${hasPermission('delete') ? `
-                    <button class="action-btn delete" onclick="deleteReceipt(${payment.id}, 'unjustified')">
-                        <i class="fas fa-trash"></i>
-                    </button>` : ''}
-                </div>
-            </td>
-            <td><input type="checkbox" data-id="${payment.id}"></td>
-            <td>${payment.serial}</td>
-            <td>${payment.receiptNo}</td>
-            <td>${payment.name}</td>
-            <td>${formatDate(payment.paymentDate)}</td>
-            <td><strong>${(payment.amount || 0).toFixed(2)}</strong></td>
-            <td>${payment.purpose}</td>
-            <td>${payment.createdBy || '-'}</td>
-        `;
-        tbody.appendChild(row);
-    });
 }
 
 // Search Database
@@ -1869,7 +2470,6 @@ function executePrint() {
                 }
                 .print-by-user {
                     font-size: 13px;
-                }
                     font-weight: 600;
                 }
                 @media print { 
@@ -2238,7 +2838,7 @@ function addUser(e) {
                 role,
                 gender,
                 avatar,
-                permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print'] : permissions,
+                permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'backup', 'restore'] : permissions,
                 createdAt: new Date().toISOString()
             };
             
@@ -2419,7 +3019,7 @@ function updateUser(e) {
         role,
         gender,
         avatar,
-        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print'] : permissions,
+        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'backup', 'restore'] : permissions,
         updatedAt: new Date().toISOString()
     };
     
@@ -2449,7 +3049,7 @@ function logAudit(action, description, details = null) {
         details: details,
         userId: currentUser ? currentUser.id : null,
         username: currentUser ? (currentUser.displayName || currentUser.username) : 'Unknown',
-        timestamp: new Date().toISOString()
+        timestamp: toEgyptTime(new Date()).toISOString()
     };
     
     // حفظ في Firebase
@@ -2483,9 +3083,9 @@ function loadAuditLogs() {
             }
             
             logs.forEach(log => {
-                const date = new Date(log.timestamp);
-                const dateStr = date.toLocaleDateString('ar-EG');
-                const timeStr = date.toLocaleTimeString('ar-EG');
+                const egyptTime = toEgyptTime(log.timestamp);
+                const dateStr = egyptTime.toLocaleDateString('ar-EG');
+                const timeStr = egyptTime.toLocaleTimeString('ar-EG');
                 
                 const actionClass = {
                     'add': 'success',
@@ -2530,7 +3130,7 @@ function loadAuditLogs() {
 
 function viewAuditDetails(timestamp, action, description) {
     // يمكن عرض تفاصيل أكثر هنا
-    showMessage(`التفاصيل: ${description}\nالتاريخ: ${new Date(timestamp).toLocaleString('ar-EG')}`);
+    showMessage(`التفاصيل: ${description}\nالتاريخ: ${formatEgyptDateTime(timestamp)}`);
 }
 
 // مسح سجل العمليات
@@ -3507,9 +4107,28 @@ function downloadCSV(content, filename) {
 }
 
 // Modal Functions
-function showMessage(message) {
-    document.getElementById('message-text').textContent = message;
-    document.getElementById('message-modal').classList.add('active');
+function showMessage(message, type = 'info') {
+    notifications.show(message, type);
+}
+
+// Egypt Time Helper
+function toEgyptTime(date) {
+    const egyptOffset = 2 * 60; // UTC+2 for Egypt (winter)
+    const dateObj = new Date(date);
+    const utc = dateObj.getTime() + (dateObj.getTimezoneOffset() * 60000);
+    return new Date(utc + (egyptOffset * 60000));
+}
+
+function formatEgyptDateTime(dateStr) {
+    const egyptTime = toEgyptTime(dateStr);
+    return egyptTime.toLocaleString('ar-EG', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
 }
 
 function showConfirm(message, callback) {
@@ -3540,24 +4159,32 @@ function clearAllData() {
     }
     
     showConfirm(
-        'هل أنت متأكد من مسح جميع البيانات؟\n\nسيتم مسح:\n- جميع الإيصالات النقدية\n- جميع مبالغ بدون وجه حق\n- قائمة الأسماء\n\nملاحظة: لن يتم مسح حسابات المستخدمين',
+        'هل أنت متأكد من مسح جميع البيانات؟\n\nسيتم مسح:\n- جميع الإيصالات النقدية\n- جميع مبالغ بدون وجه حق\n- قائمة الأسماء\n- سجل العمليات\n\nملاحظة: لن يتم مسح حسابات المستخدمين',
         function() {
-            // Clear all data except users
-            localStorage.removeItem(DB_KEYS.CASH_RECEIPTS);
-            localStorage.removeItem(DB_KEYS.UNJUSTIFIED_PAYMENTS);
-            localStorage.removeItem(DB_KEYS.NAMES_LIST);
+            // مسح البيانات من Firebase
+            const deletePromises = [
+                database.ref('cash_receipts').remove(),
+                database.ref('unjustified_payments').remove(),
+                database.ref('names').remove(),
+                database.ref('audit_logs').remove()
+            ];
             
-            // Reinitialize empty arrays
-            localStorage.setItem(DB_KEYS.CASH_RECEIPTS, JSON.stringify([]));
-            localStorage.setItem(DB_KEYS.UNJUSTIFIED_PAYMENTS, JSON.stringify([]));
-            localStorage.setItem(DB_KEYS.NAMES_LIST, JSON.stringify([]));
-            
-            // Refresh displays
-            loadDatabase('cash');
-            loadDatabase('unjustified');
-            updateNamesList();
-            
-            showMessage('تم مسح جميع البيانات بنجاح');
+            Promise.all(deletePromises)
+                .then(() => {
+                    // تسجيل عملية المسح
+                    logAudit('clear_all', 'مسح جميع البيانات', null);
+                    
+                    // Refresh displays
+                    loadDatabase('cash');
+                    loadDatabase('unjustified');
+                    updateNamesList();
+                    
+                    showMessage('تم مسح جميع البيانات بنجاح');
+                })
+                .catch((error) => {
+                    console.error('Error clearing data:', error);
+                    showMessage('حدث خطأ في مسح البيانات: ' + error.message);
+                });
         }
     );
 }
@@ -3875,36 +4502,4 @@ function exportPersonReport() {
     XLSX.writeFile(wb, `تقرير_${personName}_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
 }
 
-// إضافة مستمعي الأحداث
-document.addEventListener('DOMContentLoaded', function() {
-    // تحميل أسماء الأشخاص عند فتح صفحة التقرير
-    const personReportsPage = document.getElementById('person-reports');
-    if (personReportsPage) {
-        loadPersonNames();
-    }
-    
-    // مستمع لتوليد التقرير
-    const generatePersonReportBtn = document.getElementById('generate-person-report');
-    if (generatePersonReportBtn) {
-        generatePersonReportBtn.addEventListener('click', generatePersonReport);
-    }
-    
-    // مستمع للتصدير
-    const exportPersonReportBtn = document.getElementById('export-person-report');
-    if (exportPersonReportBtn) {
-        exportPersonReportBtn.addEventListener('click', exportPersonReport);
-    }
-    
-    // مستمع للطباعة
-    const printPersonReportBtn = document.getElementById('print-person-report-btn');
-    if (printPersonReportBtn) {
-        printPersonReportBtn.addEventListener('click', function() {
-            const personName = document.getElementById('person-search').value.trim();
-            if (personName) {
-                printPersonReport(personName);
-            } else {
-                showMessage('يجب كتابة اسم الشخص');
-            }
-        });
-    }
-});
+

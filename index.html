@@ -4,43 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدفوعات الصناديق والمعاشات - كلية طب الأسنان</title>
-    <link rel="stylesheet" href="styles.css?v=23">
+    <link rel="stylesheet" href="styles.css?v=40">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- أنماط سجل العمليات -->
-    <style>
-        .badge {
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .badge-info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        .badge-default {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        .audit-logs-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-        }
-    </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -51,6 +17,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
+    <!-- Dark Mode Toggle Button -->
+    <button class="theme-toggle" id="theme-toggle" title="تبديل المظهر">
+        <i class="fas fa-moon"></i>
+        <i class="fas fa-sun"></i>
+    </button>
+
     <!-- صفحة تسجيل الدخول -->
     <div id="login-page" class="page active">
         <div class="login-container">
@@ -81,7 +53,7 @@
                         <label for="password">كلمة المرور</label>
                         <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
                     </div>
-                    <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                    <button type="submit" class="btn btn-primary btn-full btn-animated" id="login-btn">
                         <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
                     </button>
                     <div id="login-loading" style="display: none; text-align: center; margin-top: 15px; color: #1565c0;">
@@ -228,7 +200,7 @@
                                 <button type="button" class="btn btn-success" id="save-cash-receipt">
                                     <i class="fas fa-save"></i> حفظ البيانات
                                 </button>
-                                <button type="button" class="btn btn-primary" id="print-cash-receipt">
+                                <button type="button" class="btn btn-primary btn-animated" id="print-cash-receipt">
                                     <i class="fas fa-print"></i> طباعة
                                 </button>
                                 <button type="button" class="btn btn-warning" id="goto-database">
@@ -288,7 +260,7 @@
                                 <button type="button" class="btn btn-success" id="save-unjustified">
                                     <i class="fas fa-save"></i> حفظ البيانات
                                 </button>
-                                <button type="button" class="btn btn-primary" id="print-unjustified">
+                                <button type="button" class="btn btn-primary btn-animated" id="print-unjustified">
                                     <i class="fas fa-print"></i> طباعة
                                 </button>
                                 <button type="button" class="btn btn-warning" id="goto-unjustified-db">
@@ -308,7 +280,7 @@
                     <div class="db-controls">
                         <div class="search-box">
                             <input type="text" id="db-search" placeholder="البحث بالاسم أو رقم الإيصال...">
-                            <button class="btn btn-primary" id="db-search-btn">
+                            <button class="btn btn-primary btn-animated" id="db-search-btn">
                                 <i class="fas fa-search"></i>
                             </button>
                             <button class="btn btn-light-nav" id="goto-unjustified-db-btn" title="الانتقال لقاعدة بيانات مبالغ بدون وجه حق">
@@ -316,14 +288,21 @@
                             </button>
                         </div>
                         <div class="db-actions">
-                            <button class="btn btn-success" id="export-excel">
+                            <button class="btn btn-success btn-animated" id="export-excel">
                                 <i class="fas fa-file-excel"></i> تصدير Excel
                             </button>
-                            <button class="btn btn-info" id="import-excel">
+                            <button class="btn btn-info btn-animated" id="import-excel">
                                 <i class="fas fa-upload"></i> استيراد Excel
                             </button>
                             <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none;">
-                            <button class="btn btn-danger admin-only" id="delete-selected" style="display:none;">
+                            <button class="btn btn-warning btn-animated" id="backup-btn" onclick="BackupSystem.createBackup()">
+                                <i class="fas fa-download"></i> نسخ احتياطي
+                            </button>
+                            <button class="btn btn-secondary btn-animated" id="restore-btn" onclick="document.getElementById('restore-file').click()">
+                                <i class="fas fa-upload"></i> استعادة
+                            </button>
+                            <input type="file" id="restore-file" accept=".json" style="display:none;" onchange="handleRestoreFile(this)">
+                            <button class="btn btn-danger btn-animated admin-only" id="delete-selected" style="display:none;">
                                 <i class="fas fa-trash"></i> حذف المحدد
                             </button>
                         </div>
@@ -355,6 +334,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="cash-pagination-controls"></div>
 
                 </div>
             </div>
@@ -375,14 +355,20 @@
                             </button>
                         </div>
                         <div class="db-actions">
-                            <button class="btn btn-success" id="export-unjustified-excel">
+                            <button class="btn btn-success btn-animated" id="export-unjustified-excel">
                                 <i class="fas fa-file-excel"></i> تصدير Excel
                             </button>
-                            <button class="btn btn-info" id="import-unjustified-excel">
+                            <button class="btn btn-info btn-animated" id="import-unjustified-excel">
                                 <i class="fas fa-upload"></i> استيراد Excel
                             </button>
                             <input type="file" id="unjustified-excel-file" accept=".xlsx,.xls,.csv" style="display:none;">
-                            <button class="btn btn-danger admin-only" id="delete-unjustified-selected" style="display:none;">
+                            <button class="btn btn-warning btn-animated" onclick="BackupSystem.createBackup()">
+                                <i class="fas fa-download"></i> نسخ احتياطي
+                            </button>
+                            <button class="btn btn-secondary btn-animated" onclick="document.getElementById('restore-file').click()">
+                                <i class="fas fa-upload"></i> استعادة
+                            </button>
+                            <button class="btn btn-danger btn-animated admin-only" id="delete-unjustified-selected" style="display:none;">
                                 <i class="fas fa-trash"></i> حذف المحدد
                             </button>
                         </div>
@@ -407,6 +393,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="unjustified-pagination-controls"></div>
 
                 </div>
             </div>
@@ -477,9 +464,11 @@
                                     <label><input type="checkbox" class="perm-checkbox" value="import"> استيراد Excel</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="export"> تصدير Excel</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="print"> طباعة</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="backup"> نسخ احتياطي</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="restore"> استعادة</label>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success btn-animated">
                                 <i class="fas fa-user-plus"></i> إضافة مستخدم
                             </button>
                             <button type="button" class="btn btn-danger" id="clear-all-data" style="margin-right: 10px; background: #dc3545;">
@@ -512,10 +501,10 @@
                             <i class="fas fa-history"></i> سجل العمليات
                         </h3>
                         <div style="margin-bottom: 15px;">
-                            <button class="btn btn-primary" onclick="loadAuditLogs()">
+                            <button class="btn btn-primary btn-animated" onclick="loadAuditLogs()">
                                 <i class="fas fa-sync"></i> تحديث السجل
                             </button>
-                            <button class="btn btn-secondary" onclick="clearAuditLogs()" style="margin-right: 10px;">
+                            <button class="btn btn-secondary btn-animated" onclick="clearAuditLogs()" style="margin-right: 10px;">
                                 <i class="fas fa-trash"></i> مسح السجل
                             </button>
                         </div>
@@ -561,13 +550,13 @@
                                 </select>
                             </div>
                         </div>
-                        <button class="btn btn-primary" id="generate-report">
+                        <button class="btn btn-primary btn-animated" id="generate-report">
                             <i class="fas fa-search"></i> عرض التقرير
                         </button>
-                        <button class="btn btn-success" id="export-report">
+                        <button class="btn btn-success btn-animated" id="export-report">
                             <i class="fas fa-file-excel"></i> تصدير Excel
                         </button>
-                        <button class="btn btn-info" id="print-report-btn">
+                        <button class="btn btn-info btn-animated" id="print-report-btn">
                             <i class="fas fa-print"></i> طباعة التقرير
                         </button>
                     </div>
@@ -590,13 +579,13 @@
                                 <div id="person-suggestions" class="suggestions-list"></div>
                             </div>
                         </div>
-                        <button class="btn btn-primary" id="generate-person-report">
+                        <button class="btn btn-primary btn-animated" id="generate-person-report">
                             <i class="fas fa-search"></i> عرض التقرير
                         </button>
-                        <button class="btn btn-success" id="export-person-report">
+                        <button class="btn btn-success btn-animated" id="export-person-report">
                             <i class="fas fa-file-excel"></i> تصدير Excel
                         </button>
-                        <button class="btn btn-info" id="print-person-report-btn">
+                        <button class="btn btn-info btn-animated" id="print-person-report-btn">
                             <i class="fas fa-print"></i> طباعة التقرير
                         </button>
                     </div>
@@ -623,7 +612,7 @@
                     <label>عدد النسخ:</label>
                     <input type="number" id="print-copies" value="1" min="1" max="10">
                 </div>
-                <button class="btn btn-primary" id="confirm-print">
+                <button class="btn btn-primary btn-animated" id="confirm-print">
                     <i class="fas fa-print"></i> طباعة
                 </button>
                 <button class="btn btn-secondary close-modal">إغلاق</button>
@@ -648,23 +637,19 @@
         </div>
     </div>
 
-    <!-- نافذة رسالة -->
-    <div id="message-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>رسالة</h3>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="message-text"></p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary close-modal">موافق</button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="script.js?v=23"></script>
+    <script src="script.js?v=40"></script>
+    <script>
+        // Set default dates immediately when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                var today = new Date().toISOString().split('T')[0];
+                var paymentDate = document.getElementById('payment-date');
+                var unjustifiedDate = document.getElementById('unjustified-date');
+                if (paymentDate) paymentDate.value = today;
+                if (unjustifiedDate) unjustifiedDate.value = today;
+            }, 100);
+        });
+    </script>
 </body>
 </html>
