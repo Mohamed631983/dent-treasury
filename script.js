@@ -413,6 +413,16 @@ function initPagination() {
             renderUnjustifiedDatabasePage(pageItems);
         }
     });
+    
+    // Set initial page to last page after data loads
+    setTimeout(() => {
+        if (cashPagination && cashFullData.length > 0) {
+            cashPagination.goToPage(cashPagination.getTotalPages());
+        }
+        if (unjustifiedPagination && unjustifiedFullData.length > 0) {
+            unjustifiedPagination.goToPage(unjustifiedPagination.getTotalPages());
+        }
+    }, 1000);
 }
 
 // Render only current page items for cash receipts
@@ -839,6 +849,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         console.log('Firebase initialized successfully');
         
+        // Initialize digital clock
+        initDigitalClock();
+        
         // إنشاء Admin افتراضي بعد ثانية واحدة
         setTimeout(() => {
             createDefaultAdminIfNeeded();
@@ -885,6 +898,33 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage('حدث خطأ في تهيئة التطبيق: ' + error.message);
     }
 });
+
+// Digital Clock Functionality
+function initDigitalClock() {
+    function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('ar-EG', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true
+        });
+        const dateString = now.toLocaleDateString('ar-EG', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        
+        document.getElementById('clock-time').textContent = timeString;
+        document.getElementById('clock-date').textContent = dateString;
+    }
+    
+    // Update immediately
+    updateClock();
+    
+    // Update every second
+    setInterval(updateClock, 1000);
+}
 
 
 
@@ -3276,91 +3316,79 @@ function renderReportResults(results) {
         return;
     }
     
-    // حساب المجاميع للبنود المختلفة
-    const totals = {
-        'estabd': 0,
-        'aht': 0,
-        'sandog_tamen': 0,
-        'wheda_markabat': 0,
-        'nogaba': 0,
-        'tamenat': 0,
-        'مبالغ صرفت بدون وجه حق': 0
-    };
+    // Get date range from inputs
+    const fromDateStr = document.getElementById('report-from').value;
+    const toDateStr = document.getElementById('report-to').value;
     
-    let cashCount = 0;
-    let unjustifiedCount = 0;
-    
-    results.forEach(item => {
-        if (item.type === 'cash') {
-            cashCount++;
-            // جمع قيم البنود
-            if (item.accounts) {
-                totals['estabd'] += item.accounts['estabd'] || 0;
-                totals['aht'] += item.accounts['aht'] || 0;
-                totals['sandog_tamen'] += item.accounts['sandog_tamen'] || 0;
-                totals['wheda_markabat'] += item.accounts['wheda_markabat'] || 0;
-                totals['nogaba'] += item.accounts['nogaba'] || 0;
-                totals['tamenat'] += item.accounts['tamenat'] || 0;
-            }
-        } else if (item.type === 'unjustified') {
-            unjustifiedCount++;
-            totals['مبالغ صرفت بدون وجه حق'] += item.amount || 0;
-        }
-    });
-    
-    // حساب الإجمالي الكلي
-    const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
-    
+    // Create table header with date range
     let html = `
-        <div class="report-summary" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); padding: 25px; border-radius: 15px; margin-bottom: 20px;">
-            <h4 style="text-align: center; color: #1565c0; margin-bottom: 20px; font-size: 22px;">ملخص التقرير</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #1565c0; text-align: center;">تقرير الفترة من ${fromDateStr} إلى ${toDateStr}</h3>
+            <button class="btn btn-primary" style="margin: 10px auto; display: block;" onclick="printReport(results, '${fromDateStr}', '${toDateStr}')">
+                <i class="fas fa-print"></i> طباعة التقرير
+            </button>
+        </div>
+        <table class="report-table" style="width: 100%; border-collapse: collapse; margin-top: 0;">
+            <thead>
+                <tr>
+                    <th>م</th>
+                    <th>نوع</th>
+                    <th>رقم الإيصال</th>
+                    <th>الاسم</th>
+                    <th>التاريخ</th>
+                    <th>المبلغ</th>
+                    <th>البيان</th>
+                </tr>
+            </thead>
+            <tbody>
     `;
     
-    // إضافة البنود التي لها قيم
-    const items = [
-        { name: 'استبعاد', value: totals['estabd'] },
-        { name: 'أعضاء هيئة التدريس', value: totals['aht'] },
-        { name: 'صندوق التأمين', value: totals['sandog_tamen'] },
-        { name: 'وحدة مركبات', value: totals['wheda_markabat'] },
-        { name: 'نقابة العاملين', value: totals['nogaba'] },
-        { name: 'الهيئة العامة للتأمينات والمعاشات', value: totals['tamenat'] },
-        { name: 'مبالغ صرفت بدون وجه حق', value: totals['مبالغ صرفت بدون وجه حق'], highlight: true }
-    ];
-    
-    items.forEach(item => {
-        if (item.value > 0 || item.name === 'مبالغ صرفت بدون وجه حق') {
-            const highlightStyle = item.highlight ? 'background: linear-gradient(135deg, #fff3e0, #ffe0b2); border: 2px solid #ff9800;' : 'background: white; border: 1px solid #e0e0e0;';
-            html += `
-                <div style="${highlightStyle} padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: 600; color: #333; font-size: 16px;">${item.name}</span>
-                    <span style="font-weight: 700; color: #2e7d32; font-size: 18px;">${item.value.toFixed(2)} ج.م</span>
-                </div>
-            `;
+    results.forEach((item, index) => {
+        const type = item.type === 'cash' ? 'نقدي' : 'بدون وجه حق';
+        const name = item.type === 'cash' ? item.payerName : item.name;
+        const receiptNo = item.type === 'cash' ? item.receiptNo : item.receiptNo;
+        const amount = item.type === 'cash' ? item.total : item.amount;
+        let description = '';
+        
+        if (item.type === 'cash' && item.accounts) {
+            const accounts = [];
+            Object.entries(item.accounts).forEach(([key, value]) => {
+                if (value > 0) {
+                    const accountNames = {
+                        'estabd': 'استبعاد',
+                        'aht': 'أعضاء هيئة التدريس',
+                        'sandog_tamen': 'صندوق التأمين',
+                        'wheda_markabat': 'وحدة مركبات',
+                        'nogaba': 'نقابة العاملين',
+                        'tamenat': 'الهيئة العامة للتأمينات والمعاشات'
+                    };
+                    accounts.push(`${accountNames[key] || key}: ${parseFloat(value).toFixed(2)}`);
+                }
+            });
+            description = accounts.join(' + ');
+        } else if (item.type === 'unjustified') {
+            description = item.purpose || '';
         }
+        
+        html += `
+            <tr>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${index + 1}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${type}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${receiptNo}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${name}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item.paymentDate}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${parseFloat(amount).toFixed(2)} ج.م</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${description}</td>
+            </tr>
+        `;
     });
     
     html += `
-            </div>
-            <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #c8e6c9, #a5d6a7); border-radius: 10px; text-align: center; border: 2px solid #4caf50;">
-                <span style="font-size: 20px; font-weight: 700; color: #1b5e20;">الإجمالي الكلي: ${grandTotal.toFixed(2)} ج.م</span>
-            </div>
-            <div style="margin-top: 15px; text-align: center; color: #666; font-size: 14px;">
-                عدد إيصالات الاستلام النقدي: ${cashCount} | عدد مبالغ بدون وجه حق: ${unjustifiedCount}
-            </div>
-        </div>
+            </tbody>
+        </table>
     `;
     
     container.innerHTML = html;
-    
-    // Add print button
-    const printBtn = document.createElement('button');
-    printBtn.className = 'btn btn-primary';
-    printBtn.style.marginTop = '20px';
-    printBtn.style.marginRight = '10px';
-    printBtn.innerHTML = '<i class="fas fa-print"></i> طباعة التقرير';
-    printBtn.onclick = function() { printReport(results); };
-    container.appendChild(printBtn);
 }
 
 function printReport(results, fromDate, toDate) {
@@ -3444,12 +3472,6 @@ function printReport(results, fromDate, toDate) {
     html += `
             </tbody>
         </table>
-        
-        <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 10px;">
-            <h4 style="margin: 10px 0; color: #1565c0;">ملخص التقرير</h4>
-            <p style="margin: 5px 0;">إيصالات النقدي: ${cashCount} | مبالغ بدون وجه حق: ${unjustifiedCount}</p>
-            <p style="margin: 5px 0; font-size: 18px; font-weight: bold;">الإجمالي الكلي: ${grandTotal.toFixed(2)} ج.م</p>
-        </div>
         
         <div style="margin-top: 30px; display: flex; justify-content: space-around; padding-top: 20px; border-top: 1px solid #333;">
             <div style="text-align: center;">

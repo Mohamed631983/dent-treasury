@@ -512,7 +512,7 @@ body {
     padding: 35px;
 }
 
-/* Accounts Table */
+/* Accounts Grid Layout */
 .accounts-section {
     margin: 30px 0;
 }
@@ -522,6 +522,60 @@ body {
     margin-bottom: 20px;
     font-size: 20px;
     font-weight: 700;
+}
+
+.accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .accounts-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+    }
+    
+    .account-item label {
+        font-size: 13px;
+    }
+    
+    .account-item input {
+        padding: 10px;
+        font-size: 14px;
+    }
+}
+
+.account-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.account-item label {
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.account-item input {
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    text-align: center;
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    transition: var(--transition);
+    background: var(--white);
+}
+
+.account-item input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    background: var(--white);
+    box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1);
 }
 
 .accounts-table {
@@ -1544,8 +1598,8 @@ body {
 }
 
 /* ==========================================
-   DARK MODE TOGGLE
-   ========================================== */
+    DARK MODE TOGGLE
+    ========================================== */
 [data-theme="dark"] {
     --primary-color: #42a5f6;
     --secondary-color: #64b5f6;
@@ -1563,10 +1617,54 @@ body {
     background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
 }
 
+/* Digital Clock Styles */
+.digital-clock {
+    position: fixed;
+    top: 90px; /* Below the dark mode toggle (20px + 50px height + 20px spacing) */
+    left: 20px; /* Aligned with the dark mode toggle on opposite side */
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 12px 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    width: 200px; /* Fixed width to prevent it from being too large */
+}
+
+.digital-clock .clock-time {
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+    letter-spacing: 1px;
+}
+
+.digital-clock .clock-date {
+    font-size: 14px;
+    color: var(--gray);
+    font-weight: 500;
+}
+
+/* Account Label Center Alignment */
+.account-item label {
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+    font-size: 14px;
+    text-align: center;
+    display: block;
+    width: 100%;
+}
+
 .theme-toggle {
     position: fixed;
     top: 20px;
-    left: 20px;
+    right: 20px;
     z-index: 1000;
     background: rgba(255, 255, 255, 0.95);
     border: 2px solid var(--primary-color);
