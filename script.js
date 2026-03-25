@@ -905,8 +905,7 @@ function initDigitalClock() {
         const now = new Date();
         const timeString = now.toLocaleTimeString('ar-EG', { 
             hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit',
+            minute: '2-digit',
             hour12: true
         });
         const dateString = now.toLocaleDateString('ar-EG', {
@@ -922,15 +921,15 @@ function initDigitalClock() {
     // Update immediately
     updateClock();
     
-    // Update every second
+    // Update every second (still update for date change at midnight, but could be every minute)
     setInterval(updateClock, 1000);
 }
 
 
 
-// إعداد مستمعي التغييرات في الوقت الفعلي
+// إعداد مستمعي التغييرات في الوقت الفعلي مع استعلامات محدودة
 function setupRealtimeListeners() {
-    // الاستماع للإيصالات النقدية
+    // الاستماع للإيصالات النقدية مع حد أقصى للأداء
     listenToFirebase('cash_receipts', (data) => {
         if (data) {
             const receipts = Object.values(data);
@@ -939,11 +938,13 @@ function setupRealtimeListeners() {
                 const dateB = parseReportDate(b.paymentDate);
                 return dateA - dateB;
             });
-            renderCashDatabase(receipts);
+            // أخذ آخر 500 record فقط لتجنب التحميل الزائد
+            const limitedReceipts = receipts.slice(-500);
+            renderCashDatabase(limitedReceipts);
         }
     });
     
-    // الاستماع لمبالغ بدون وجه حق
+    // الاستماع لمبالغ بدون وجه حق مع حد أقصى للأداء
     listenToFirebase('unjustified_payments', (data) => {
         if (data) {
             const payments = Object.values(data);
@@ -952,7 +953,9 @@ function setupRealtimeListeners() {
                 const dateB = parseReportDate(b.paymentDate);
                 return dateA - dateB;
             });
-            renderUnjustifiedDatabase(payments);
+            // أخذ آخر 500 record فقط لتجنب التحميل الزائد
+            const limitedPayments = payments.slice(-500);
+            renderUnjustifiedDatabase(limitedPayments);
         }
     });
 }
