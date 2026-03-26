@@ -675,6 +675,7 @@ let confirmCallback = null;
 let printData = null;
 let printType = null;
 let inactivityTimer = null;
+let originalEditData = null; // Store original data when editing
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 // Firebase Configuration
@@ -1004,6 +1005,19 @@ function setupEventListeners() {
     document.getElementById('unjustified-search').addEventListener('input', (e) => {
         liveSearch('unjustified', e.target.value);
     });
+    
+    // Date Filter Buttons
+    document.getElementById('db-filter-btn').addEventListener('click', () => filterDatabaseByDate('cash'));
+    document.getElementById('db-reset-filter-btn').addEventListener('click', () => resetDateFilter('cash'));
+    document.getElementById('unjustified-filter-btn').addEventListener('click', () => filterDatabaseByDate('unjustified'));
+    document.getElementById('unjustified-reset-filter-btn').addEventListener('click', () => resetDateFilter('unjustified'));
+    
+    // Set default date-to to today
+    const today = new Date().toISOString().split('T')[0];
+    const dbDateTo = document.getElementById('db-date-to');
+    const unjustifiedDateTo = document.getElementById('unjustified-date-to');
+    if (dbDateTo) dbDateTo.value = today;
+    if (unjustifiedDateTo) unjustifiedDateTo.value = today;
     
     // Database navigation buttons
     document.getElementById('goto-unjustified-db-btn').addEventListener('click', () => navigateTo('unjustified-db'));
@@ -1523,6 +1537,198 @@ function numberToArabicWords(num) {
     return result;
 }
 
+// Generate changes summary for cash receipt
+function generateCashChangesSummary() {
+    if (!originalEditData || !editingId) return null;
+    
+    const changes = [];
+    
+    // Check receipt number
+    const newReceiptNo = document.getElementById('receipt-no').value.trim();
+    if (newReceiptNo !== originalEditData.receiptNo) {
+        changes.push({
+            field: 'رقم الإيصال',
+            oldValue: originalEditData.receiptNo,
+            newValue: newReceiptNo
+        });
+    }
+    
+    // Check payer name
+    const newPayerName = document.getElementById('payer-name').value.trim();
+    if (newPayerName !== originalEditData.payerName) {
+        changes.push({
+            field: 'الاسم',
+            oldValue: originalEditData.payerName,
+            newValue: newPayerName
+        });
+    }
+    
+    // Check payment date
+    const newPaymentDate = convertFromDateInputFormat(document.getElementById('payment-date').value);
+    if (newPaymentDate !== originalEditData.paymentDate) {
+        changes.push({
+            field: 'تاريخ الدفع',
+            oldValue: originalEditData.paymentDate || 'غير محدد',
+            newValue: newPaymentDate || 'غير محدد'
+        });
+    }
+    
+    // Check period from
+    const newPeriodFrom = convertFromDateInputFormat(document.getElementById('period-from').value);
+    if (newPeriodFrom !== originalEditData.periodFrom) {
+        changes.push({
+            field: 'الفترة من',
+            oldValue: originalEditData.periodFrom || 'غير محدد',
+            newValue: newPeriodFrom || 'غير محدد'
+        });
+    }
+    
+    // Check period to
+    const newPeriodTo = convertFromDateInputFormat(document.getElementById('period-to').value);
+    if (newPeriodTo !== originalEditData.periodTo) {
+        changes.push({
+            field: 'الفترة إلى',
+            oldValue: originalEditData.periodTo || 'غير محدد',
+            newValue: newPeriodTo || 'غير محدد'
+        });
+    }
+    
+    // Check accounts
+    const accountLabels = {
+        'estabd': 'استبعاد',
+        'aht': 'ا.ه.ت',
+        'sandog_tamen': 'صندوق التأمين',
+        'wheda_markabat': 'وحدة مركبات',
+        'nogaba': 'نقابة العاملين',
+        'tamenat': 'الهيئة العامة للتأمينات'
+    };
+    
+    document.querySelectorAll('.account-input').forEach(input => {
+        const accountName = input.dataset.account;
+        const newValue = parseFloat(input.value) || 0;
+        const oldValue = parseFloat(originalEditData.accounts[accountName]) || 0;
+        
+        if (newValue !== oldValue) {
+            changes.push({
+                field: accountLabels[accountName] || accountName,
+                oldValue: oldValue.toFixed(2) + ' ج.م',
+                newValue: newValue.toFixed(2) + ' ج.م'
+            });
+        }
+    });
+    
+    // Check total
+    const newTotal = parseFloat(document.getElementById('total-amount').textContent);
+    const oldTotal = parseFloat(originalEditData.total) || 0;
+    if (newTotal !== oldTotal) {
+        changes.push({
+            field: 'الإجمالي',
+            oldValue: oldTotal.toFixed(2) + ' ج.م',
+            newValue: newTotal.toFixed(2) + ' ج.م'
+        });
+    }
+    
+    return changes;
+}
+
+// Generate changes summary for unjustified payment
+function generateUnjustifiedChangesSummary() {
+    if (!originalEditData || !editingId) return null;
+    
+    const changes = [];
+    
+    // Check receipt number
+    const newReceiptNo = document.getElementById('unjustified-receipt-no').value.trim();
+    if (newReceiptNo !== originalEditData.receiptNo) {
+        changes.push({
+            field: 'رقم الإيصال/الإشعار',
+            oldValue: originalEditData.receiptNo,
+            newValue: newReceiptNo
+        });
+    }
+    
+    // Check name
+    const newName = document.getElementById('unjustified-name').value.trim();
+    if (newName !== originalEditData.name) {
+        changes.push({
+            field: 'الاسم',
+            oldValue: originalEditData.name,
+            newValue: newName
+        });
+    }
+    
+    // Check payment date
+    const newDate = convertFromDateInputFormat(document.getElementById('unjustified-date').value);
+    if (newDate !== originalEditData.paymentDate) {
+        changes.push({
+            field: 'تاريخ الدفع',
+            oldValue: originalEditData.paymentDate || 'غير محدد',
+            newValue: newDate || 'غير محدد'
+        });
+    }
+    
+    // Check amount
+    const newAmount = parseFloat(document.getElementById('unjustified-amount').value) || 0;
+    const oldAmount = parseFloat(originalEditData.amount) || 0;
+    if (newAmount !== oldAmount) {
+        changes.push({
+            field: 'المبلغ',
+            oldValue: oldAmount.toFixed(2) + ' ج.م',
+            newValue: newAmount.toFixed(2) + ' ج.م'
+        });
+    }
+    
+    // Check purpose
+    const newPurpose = document.getElementById('unjustified-purpose').value.trim();
+    if (newPurpose !== originalEditData.purpose) {
+        changes.push({
+            field: 'الغرض/السبب',
+            oldValue: originalEditData.purpose,
+            newValue: newPurpose
+        });
+    }
+    
+    return changes;
+}
+
+// Show changes summary modal
+function showChangesSummary(changes, onConfirm) {
+    const contentDiv = document.getElementById('changes-summary-content');
+    
+    if (!changes || changes.length === 0) {
+        onConfirm();
+        return;
+    }
+    
+    let html = '<table class="changes-table">';
+    html += '<thead><tr><th>الحقل</th><th>القيمة القديمة</th><th>القيمة الجديدة</th></tr></thead>';
+    html += '<tbody>';
+    
+    changes.forEach(change => {
+        const isTotal = change.field === 'الإجمالي';
+        const rowClass = isTotal ? 'total-change' : '';
+        html += `<tr class="${rowClass}">
+            <td class="field-name"><i class="fas fa-pen"></i> ${change.field}</td>
+            <td class="old-value">${change.oldValue}</td>
+            <td class="new-value">${change.newValue}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table>';
+    html += `<p class="changes-count"><i class="fas fa-list-check"></i> عدد التغييرات: ${changes.length}</p>`;
+    
+    contentDiv.innerHTML = html;
+    
+    // Set confirm button callback
+    document.getElementById('confirm-save-changes').onclick = () => {
+        closeAllModals();
+        onConfirm();
+    };
+    
+    // Show modal
+    document.getElementById('changes-summary-modal').classList.add('active');
+}
+
 // Save Cash Receipt
 function saveCashReceipt(isPrint = false) {
     const form = document.getElementById('cash-receipt-form');
@@ -1560,6 +1766,14 @@ function saveCashReceipt(isPrint = false) {
         return;
     }
     
+    // Validate total is greater than zero
+    const totalAmount = parseFloat(document.getElementById('total-amount').textContent);
+    if (totalAmount <= 0) {
+        showMessage('لا يمكن حفظ الإيصال بإجمالي صفر أو سالب! يجب إدخال مبلغ واحد على الأقل أكبر من صفر', 'error');
+        document.querySelector('.account-input').focus();
+        return;
+    }
+
     // Check for duplicate in Firebase
     console.log('Checking for duplicate receipt:', receiptNo);
     const ref = database.ref('cash_receipts');
@@ -1596,6 +1810,20 @@ function saveCashReceipt(isPrint = false) {
 
 function doSaveCashReceipt(isPrint) {
     console.log('Starting doSaveCashReceipt, editingId:', editingId, 'editingFirebaseKey:', editingFirebaseKey);
+    
+    // If editing, show changes summary before saving
+    if (editingId && editingFirebaseKey && !isPrint) {
+        const changes = generateCashChangesSummary();
+        if (changes && changes.length > 0) {
+            showChangesSummary(changes, () => doSaveCashReceiptInternal(isPrint));
+            return;
+        }
+    }
+    
+    doSaveCashReceiptInternal(isPrint);
+}
+
+function doSaveCashReceiptInternal(isPrint) {
     
     const receiptData = {
         id: editingId || Date.now(),
@@ -1714,6 +1942,20 @@ function saveUnjustified(isPrint = false) {
         return;
     }
     
+    // If editing, show changes summary before saving
+    if (editingId && editingFirebaseKey && !isPrint) {
+        const changes = generateUnjustifiedChangesSummary();
+        if (changes && changes.length > 0) {
+            showChangesSummary(changes, () => doSaveUnjustified(isPrint));
+            return;
+        }
+    }
+    
+    doSaveUnjustified(isPrint);
+}
+
+function doSaveUnjustified(isPrint) {
+    const amountValue = document.getElementById('unjustified-amount').value.trim();
     const amount = parseFloat(amountValue) || 0;
     
     const paymentData = {
@@ -1763,6 +2005,7 @@ function resetCashReceiptForm() {
     document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
     document.querySelectorAll('.account-input').forEach(input => input.value = 0);
     calculateTotal();
+    originalEditData = null; // Clear original edit data
 }
 
 function resetUnjustifiedForm() {
@@ -1770,6 +2013,7 @@ function resetUnjustifiedForm() {
     document.getElementById('unjustified-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('unjustified-amount').value = '';
     updateUnjustifiedSerial();
+    originalEditData = null; // Clear original edit data
 }
 
 // إنهاء حفظ مبالغ بدون وجه حق
@@ -1945,6 +2189,117 @@ function searchDatabase(type) {
     });
 }
 
+// Filter Database by Date Range
+function filterDatabaseByDate(type) {
+    const dateFromInput = type === 'cash' 
+        ? document.getElementById('db-date-from').value
+        : document.getElementById('unjustified-date-from').value;
+    const dateToInput = type === 'cash' 
+        ? document.getElementById('db-date-to').value
+        : document.getElementById('unjustified-date-to').value;
+    
+    // Validate that start date is required
+    if (!dateFromInput) {
+        showMessage('يجب تحديد تاريخ البداية أولاً', 'error');
+        return;
+    }
+    
+    // Get search term as well for combined filtering
+    const searchTerm = type === 'cash' 
+        ? document.getElementById('db-search').value.toLowerCase()
+        : document.getElementById('unjustified-search').value.toLowerCase();
+    
+    // Parse date inputs (YYYY-MM-DD format)
+    const dateFrom = new Date(dateFromInput);
+    const dateTo = dateToInput ? new Date(dateToInput) : null;
+    
+    // Validate date range
+    if (dateTo && dateFrom > dateTo) {
+        showMessage('تاريخ البداية يجب أن يكون قبل تاريخ النهاية', 'error');
+        return;
+    }
+    
+    const path = type === 'cash' ? 'cash_receipts' : 'unjustified_payments';
+    
+    getFromFirebase(path, (error, data) => {
+        if (error) {
+            console.error('Filter error:', error);
+            return;
+        }
+        
+        let items = [];
+        if (data) {
+            items = Object.values(data);
+        }
+        
+        const filtered = items.filter(item => {
+            // Get payment date from item
+            const itemDateStr = item.paymentDate;
+            if (!itemDateStr) return !(dateFrom || dateTo); // Include only if no date filter
+            
+            // Parse item date (supports DD/MM/YYYY or YYYY-MM-DD)
+            let itemDate;
+            if (itemDateStr.includes('/')) {
+                const parts = itemDateStr.split('/');
+                itemDate = new Date(parts[2], parts[1] - 1, parts[0]);
+            } else {
+                itemDate = new Date(itemDateStr);
+            }
+            
+            // Check date range
+            if (dateFrom && itemDate < dateFrom) return false;
+            if (dateTo && itemDate > dateTo) return false;
+            
+            // Check search term if provided
+            if (searchTerm) {
+                const name = type === 'cash' ? item.payerName : item.name;
+                const nameMatch = name && name.toLowerCase().includes(searchTerm);
+                const receiptMatch = item.receiptNo && item.receiptNo.toLowerCase().includes(searchTerm);
+                if (!nameMatch && !receiptMatch) return false;
+            }
+            
+            return true;
+        });
+        
+        // Sort by date
+        filtered.sort((a, b) => {
+            const dateA = parseReportDate(a.paymentDate);
+            const dateB = parseReportDate(b.paymentDate);
+            return dateA - dateB;
+        });
+        
+        if (type === 'cash') {
+            renderCashDatabase(filtered);
+        } else {
+            renderUnjustifiedDatabase(filtered);
+        }
+        
+        // Show filter results count
+        const count = filtered.length;
+        const total = items.length;
+        if (dateFromInput || dateToInput) {
+            showMessage(`تم تصفية ${count} سجل من أصل ${total}`, 'info');
+        }
+    });
+}
+
+// Reset Date Filter
+function resetDateFilter(type) {
+    if (type === 'cash') {
+        document.getElementById('db-date-from').value = '';
+        document.getElementById('db-date-to').value = '';
+        document.getElementById('db-search').value = '';
+    } else {
+        document.getElementById('unjustified-date-from').value = '';
+        document.getElementById('unjustified-date-to').value = '';
+        document.getElementById('unjustified-search').value = '';
+    }
+    
+    // Reload all data
+    loadDatabase(type);
+    showMessage('تم إعادة تعيين الفلتر', 'info');
+}
+
 // Edit Receipt
 function editReceipt(id, type) {
     if (!hasPermission('edit')) {
@@ -1980,6 +2335,9 @@ function editReceipt(id, type) {
             
             // Store Firebase key for updates
             editingFirebaseKey = itemKey;
+            
+            // Store original data for change summary
+            originalEditData = JSON.parse(JSON.stringify(item));
             
             if (type === 'cash') {
                 document.getElementById('receipt-no').value = item.receiptNo;

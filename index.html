@@ -127,11 +127,11 @@
                         <div class="receipt-form">
                             <div class="form-row">
                                 <div class="form-group small">
-                                    <label for="receipt-no">رقم الإيصال</label>
+                                    <label for="receipt-no"><i class="fas fa-hashtag"></i> رقم الإيصال</label>
                                     <input type="text" id="receipt-no" name="receiptNo" required>
                                 </div>
                                 <div class="form-group large">
-                                    <label for="payer-name">الاسم</label>
+                                    <label for="payer-name"><i class="fas fa-user"></i> الاسم</label>
                                     <input type="text" id="payer-name" name="payerName" list="names-list" required>
                                     <datalist id="names-list"></datalist>
                                 </div>
@@ -139,60 +139,60 @@
 
                             <div class="form-row three-cols">
                                 <div class="form-group">
-                                    <label for="payment-date">تاريخ الدفع</label>
+                                    <label for="payment-date"><i class="fas fa-calendar-day"></i> تاريخ الدفع</label>
                                     <input type="date" id="payment-date" name="paymentDate" class="date-input" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="period-from">الفترة من</label>
+                                    <label for="period-from"><i class="fas fa-calendar-alt"></i> الفترة من</label>
                                     <input type="date" id="period-from" name="periodFrom" class="date-input">
                                 </div>
                                 <div class="form-group">
-                                    <label for="period-to">الفترة إلى</label>
+                                    <label for="period-to"><i class="fas fa-calendar-alt"></i> الفترة إلى</label>
                                     <input type="date" id="period-to" name="periodTo" class="date-input">
                                 </div>
                             </div>
 
                              <div class="accounts-section">
-                                 <h4>الحسابات</h4>
+                                 <h4><i class="fas fa-coins"></i> الحسابات</h4>
                                  <div class="accounts-grid">
                                      <div class="account-item">
-                                         <label>استبعاد</label>
+                                         <label><i class="fas fa-ban"></i> استبعاد</label>
                                          <input type="number" class="account-input" data-account="estabd" value="0" min="0" step="0.01">
                                      </div>
                                      <div class="account-item">
-                                         <label>ا.ه.ت</label>
+                                         <label><i class="fas fa-building-columns"></i> ا.ه.ت</label>
                                          <input type="number" class="account-input" data-account="aht" value="0" min="0" step="0.01">
                                      </div>
                                      <div class="account-item">
-                                         <label>صندوق التأمين</label>
+                                         <label><i class="fas fa-piggy-bank"></i> صندوق التأمين</label>
                                          <input type="number" class="account-input" data-account="sandog_tamen" value="0" min="0" step="0.01">
                                      </div>
                                      <div class="account-item">
-                                         <label>وحدة مركبات</label>
+                                         <label><i class="fas fa-car"></i> وحدة مركبات</label>
                                          <input type="number" class="account-input" data-account="wheda_markabat" value="0" min="0" step="0.01">
                                      </div>
                                      <div class="account-item">
-                                         <label>نقابة العاملين</label>
+                                         <label><i class="fas fa-users"></i> نقابة العاملين</label>
                                          <input type="number" class="account-input" data-account="nogaba" value="0" min="0" step="0.01">
                                      </div>
                                      <div class="account-item">
-                                         <label>الهيئة العامة للتأمينات والمعاشات</label>
+                                         <label><i class="fas fa-hand-holding-dollar"></i> الهيئة العامة للتأمينات والمعاشات</label>
                                          <input type="number" class="account-input" data-account="tamenat" value="0" min="0" step="0.01">
                                      </div>
                                  </div>
                              </div>
 
-                            <div class="totals-section">
-                                <div class="total-row">
-                                    <label>الإجمالي بالأرقام:</label>
-                                    <span id="total-amount" class="total-number">0.00</span>
-                                    <span>ج.م</span>
-                                </div>
-                                <div class="total-row">
-                                    <label>الإجمالي بالحروف:</label>
-                                    <span id="total-words" class="total-words">صفر جنيه فقط لا غير</span>
-                                </div>
-                            </div>
+                             <div class="totals-section">
+                                 <div class="total-row">
+                                     <label><i class="fas fa-calculator"></i> الإجمالي بالأرقام:</label>
+                                     <span id="total-amount" class="total-number">0.00</span>
+                                     <span>ج.م</span>
+                                 </div>
+                                 <div class="total-row">
+                                     <label><i class="fas fa-font"></i> الإجمالي بالحروف:</label>
+                                     <span id="total-words" class="total-words">صفر جنيه فقط لا غير</span>
+                                 </div>
+                             </div>
 
                             <div class="form-actions">
                                 <button type="button" class="btn btn-success" id="save-cash-receipt">
@@ -225,15 +225,15 @@
                         <div class="receipt-form">
                             <div class="form-row">
                                 <div class="form-group small">
-                                    <label for="unjustified-serial">م</label>
+                                    <label for="unjustified-serial"><i class="fas fa-list-ol"></i> م</label>
                                     <input type="text" id="unjustified-serial" name="serial" readonly>
                                 </div>
                                 <div class="form-group small">
-                                    <label for="unjustified-receipt-no">رقم الإيصال/ الإشعار</label>
+                                    <label for="unjustified-receipt-no"><i class="fas fa-hashtag"></i> رقم الإيصال/ الإشعار</label>
                                     <input type="text" id="unjustified-receipt-no" name="receiptNo" required>
                                 </div>
                                 <div class="form-group large">
-                                    <label for="unjustified-name">الاسم</label>
+                                    <label for="unjustified-name"><i class="fas fa-user"></i> الاسم</label>
                                     <input type="text" id="unjustified-name" name="name" list="unjustified-names-list" required>
                                     <datalist id="unjustified-names-list"></datalist>
                                 </div>
@@ -241,15 +241,15 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="unjustified-date">تاريخ الدفع</label>
+                                    <label for="unjustified-date"><i class="fas fa-calendar-day"></i> تاريخ الدفع</label>
                                     <input type="date" id="unjustified-date" name="paymentDate" class="date-input" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="unjustified-amount">المبلغ (ج.م)</label>
+                                    <label for="unjustified-amount"><i class="fas fa-money-bill-wave"></i> المبلغ (ج.م)</label>
                                     <input type="number" id="unjustified-amount" name="amount" min="0" step="0.01" required>
                                 </div>
                                 <div class="form-group wide">
-                                    <label for="unjustified-purpose">الغرض/السبب</label>
+                                    <label for="unjustified-purpose"><i class="fas fa-clipboard-list"></i> الغرض/السبب</label>
                                     <input type="text" id="unjustified-purpose" name="purpose" required>
                                 </div>
                             </div>
@@ -283,6 +283,22 @@
                             </button>
                             <button class="btn btn-light-nav" id="goto-unjustified-db-btn" title="الانتقال لقاعدة بيانات مبالغ بدون وجه حق">
                                 <i class="fas fa-arrow-left"></i> قاعدة بيانات مبالغ بدون وجه حق
+                            </button>
+                        </div>
+                        <div class="date-filter">
+                            <div class="date-filter-group">
+                                <label><i class="fas fa-calendar-alt"></i> من تاريخ:</label>
+                                <input type="date" id="db-date-from" class="date-input">
+                            </div>
+                            <div class="date-filter-group">
+                                <label><i class="fas fa-calendar-alt"></i> إلى تاريخ:</label>
+                                <input type="date" id="db-date-to" class="date-input">
+                            </div>
+                            <button class="btn btn-info btn-animated" id="db-filter-btn">
+                                <i class="fas fa-filter"></i> تصفية
+                            </button>
+                            <button class="btn btn-secondary btn-animated" id="db-reset-filter-btn">
+                                <i class="fas fa-undo"></i> إعادة تعيين
                             </button>
                         </div>
                         <div class="db-actions">
@@ -350,6 +366,22 @@
                             </button>
                             <button class="btn btn-light-nav" id="goto-cash-db-btn" title="الانتقال لقاعدة بيانات الاستلام النقدي">
                                 <i class="fas fa-arrow-right"></i> قاعدة بيانات الاستلام النقدي
+                            </button>
+                        </div>
+                        <div class="date-filter">
+                            <div class="date-filter-group">
+                                <label><i class="fas fa-calendar-alt"></i> من تاريخ:</label>
+                                <input type="date" id="unjustified-date-from" class="date-input">
+                            </div>
+                            <div class="date-filter-group">
+                                <label><i class="fas fa-calendar-alt"></i> إلى تاريخ:</label>
+                                <input type="date" id="unjustified-date-to" class="date-input">
+                            </div>
+                            <button class="btn btn-info btn-animated" id="unjustified-filter-btn">
+                                <i class="fas fa-filter"></i> تصفية
+                            </button>
+                            <button class="btn btn-secondary btn-animated" id="unjustified-reset-filter-btn">
+                                <i class="fas fa-undo"></i> إعادة تعيين
                             </button>
                         </div>
                         <div class="db-actions">
@@ -631,6 +663,24 @@
             <div class="modal-footer">
                 <button class="btn btn-primary" id="confirm-yes">نعم</button>
                 <button class="btn btn-secondary" id="confirm-no">لا</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة ملخص التغييرات -->
+    <div id="changes-summary-modal" class="modal">
+        <div class="modal-content changes-summary-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-exchange-alt"></i> ملخص التغييرات</h3>
+                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="changes-warning"><i class="fas fa-info-circle"></i> تم اكتشاف تغييرات على السجل. يرجى مراجعة التغييرات قبل الحفظ:</p>
+                <div id="changes-summary-content" class="changes-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" id="confirm-save-changes"><i class="fas fa-check"></i> حفظ التغييرات</button>
+                <button class="btn btn-secondary" onclick="closeAllModals()"><i class="fas fa-times"></i> إلغاء</button>
             </div>
         </div>
     </div>
