@@ -297,8 +297,9 @@ class Pagination {
     }
 
     setTotalItems(total) {
+        const oldTotal = this.totalItems;
         this.totalItems = total;
-        this.currentPage = 1;
+        // Don't reset to page 1 - let the caller decide
     }
 
     getTotalPages() { return Math.ceil(this.totalItems / this.itemsPerPage); }
@@ -972,8 +973,10 @@ function setupEventListeners() {
     // Login Form
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     
-    // Logout
-    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    // Logout - with confirmation
+    document.getElementById('logout-btn').addEventListener('click', function() {
+        showConfirm('هل أنت متأكد من تسجيل الخروج؟', handleLogout);
+    });
     
     // Navigation
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1088,6 +1091,15 @@ function setupEventListeners() {
     // Confirm Modal
     document.getElementById('confirm-yes').addEventListener('click', handleConfirmYes);
     document.getElementById('confirm-no').addEventListener('click', closeAllModals);
+    
+    // Warning when closing page/tab
+    window.addEventListener('beforeunload', function(e) {
+        if (currentUser) {
+            e.preventDefault();
+            e.returnValue = 'هل أنت متأكد من مغادرة الصفحة؟ قد تفقد أي بيانات غير محفوظة.';
+            return e.returnValue;
+        }
+    });
 }
 
 // Update Date Inputs to Today
@@ -2134,7 +2146,13 @@ function renderCashDatabase(receipts) {
     cashFullData = receipts;
     
     if (cashPagination) {
+        const wasAtLastPage = cashPagination.currentPage >= cashPagination.getTotalPages();
         cashPagination.setTotalItems(receipts.length);
+        // Go to last page by default
+        const lastPage = cashPagination.getTotalPages();
+        if (lastPage > 0) {
+            cashPagination.currentPage = lastPage;
+        }
         cashPagination.render();
         const pageItems = cashPagination.getPageItems(receipts);
         renderCashDatabasePage(pageItems);
@@ -2147,7 +2165,13 @@ function renderUnjustifiedDatabase(payments) {
     unjustifiedFullData = payments;
     
     if (unjustifiedPagination) {
+        const wasAtLastPage = unjustifiedPagination.currentPage >= unjustifiedPagination.getTotalPages();
         unjustifiedPagination.setTotalItems(payments.length);
+        // Go to last page by default
+        const lastPage = unjustifiedPagination.getTotalPages();
+        if (lastPage > 0) {
+            unjustifiedPagination.currentPage = lastPage;
+        }
         unjustifiedPagination.render();
         const pageItems = unjustifiedPagination.getPageItems(payments);
         renderUnjustifiedDatabasePage(pageItems);

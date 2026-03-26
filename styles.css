@@ -160,6 +160,19 @@ body {
 .form-group label i {
     color: var(--primary-color);
     font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.form-group:has(input:focus) label,
+.form-group:has(select:focus) label {
+    color: var(--secondary-color);
+    transform: translateX(-3px);
+}
+
+.form-group:has(input:focus) label i,
+.form-group:has(select:focus) label i {
+    transform: scale(1.2);
+    color: var(--accent-color);
 }
 
 .form-group input,
@@ -179,6 +192,14 @@ body {
     outline: none;
     border-color: var(--secondary-color);
     box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1);
+    animation: fieldFocusPulse 0.4s ease;
+    transform: scale(1.02);
+}
+
+@keyframes fieldFocusPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.3); }
+    40% { transform: scale(1.03); box-shadow: 0 0 0 6px rgba(25, 118, 210, 0.15); }
+    100% { transform: scale(1.02); box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1); }
 }
 
 /* Date Input Styling */
@@ -198,6 +219,8 @@ body {
     outline: none;
     border-color: var(--secondary-color);
     box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1);
+    animation: fieldFocusPulse 0.4s ease;
+    transform: scale(1.02);
 }
 
 /* Custom Calendar Icon */
@@ -598,6 +621,8 @@ body {
     border-color: var(--secondary-color);
     background: var(--white);
     box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1);
+    animation: fieldFocusPulse 0.4s ease;
+    transform: scale(1.02);
 }
 
 .accounts-table {
@@ -744,6 +769,8 @@ body {
 .search-box input:focus {
     outline: none;
     border-color: var(--secondary-color);
+    animation: fieldFocusPulse 0.4s ease;
+    transform: scale(1.02);
 }
 
 /* Date Filter Styles */
@@ -794,6 +821,8 @@ body {
     outline: none;
     border-color: var(--secondary-color);
     box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    animation: fieldFocusPulse 0.4s ease;
+    transform: scale(1.02);
 }
 
 .date-filter .btn {
