@@ -440,7 +440,21 @@ function renderCashDatabasePage(receipts) {
     
     const baseIndex = (cashPagination.getCurrentPage() - 1) * cashPagination.itemsPerPage;
     
+    // Calculate totals for this page
+    const totals = {
+        estabd: 0, aht: 0, sandog_tamen: 0,
+        wheda_markabat: 0, nogaba: 0, tamenat: 0, total: 0
+    };
+    
     receipts.forEach((receipt, index) => {
+        totals.estabd += receipt.accounts['estabd'] || 0;
+        totals.aht += receipt.accounts['aht'] || 0;
+        totals.sandog_tamen += receipt.accounts['sandog_tamen'] || 0;
+        totals.wheda_markabat += receipt.accounts['wheda_markabat'] || 0;
+        totals.nogaba += receipt.accounts['nogaba'] || 0;
+        totals.tamenat += receipt.accounts['tamenat'] || 0;
+        totals.total += receipt.total || 0;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
@@ -476,6 +490,29 @@ function renderCashDatabasePage(receipts) {
         `;
         tbody.appendChild(row);
     });
+    
+    // Add totals row
+    const totalsRow = document.createElement('tr');
+    totalsRow.className = 'totals-row';
+    totalsRow.innerHTML = `
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td><strong>الإجمالي</strong></td>
+        <td>${totals.estabd.toFixed(2)}</td>
+        <td>${totals.aht.toFixed(2)}</td>
+        <td>${totals.sandog_tamen.toFixed(2)}</td>
+        <td>${totals.wheda_markabat.toFixed(2)}</td>
+        <td>${totals.nogaba.toFixed(2)}</td>
+        <td>${totals.tamenat.toFixed(2)}</td>
+        <td class="total-highlight">${totals.total.toFixed(2)}</td>
+        <td></td>
+    `;
+    tbody.appendChild(totalsRow);
 }
 
 // Render only current page items for unjustified payments
@@ -492,7 +529,12 @@ function renderUnjustifiedDatabasePage(payments) {
     
     const baseIndex = (unjustifiedPagination.getCurrentPage() - 1) * unjustifiedPagination.itemsPerPage;
     
+    // Calculate totals for this page
+    let totalAmount = 0;
+    
     payments.forEach((payment, index) => {
+        totalAmount += payment.amount || 0;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
@@ -521,6 +563,22 @@ function renderUnjustifiedDatabasePage(payments) {
         `;
         tbody.appendChild(row);
     });
+    
+    // Add totals row
+    const totalsRow = document.createElement('tr');
+    totalsRow.className = 'totals-row';
+    totalsRow.innerHTML = `
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td><strong>الإجمالي</strong></td>
+        <td class="total-highlight">${totalAmount.toFixed(2)}</td>
+        <td></td>
+        <td></td>
+    `;
+    tbody.appendChild(totalsRow);
 }
 
 // ==========================================
