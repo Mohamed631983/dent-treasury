@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1565c0"/>
+      <stop offset="100%" style="stop-color:#42a5f5"/>
+    </linearGradient>
+    <linearGradient id="bag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B4513"/>
+      <stop offset="100%" style="stop-color:#A0522D"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#bg)" stroke="#FFD700" stroke-width="3"/>
+  
+  <!-- Tooth Body -->
+  <ellipse cx="42" cy="45" rx="22" ry="25" fill="white"/>
+  <ellipse cx="42" cy="70" rx="18" ry="12" fill="white"/>
+  
+  <!-- Eyes -->
+  <circle cx="33" cy="40" r="5" fill="#333"/>
+  <circle cx="51" cy="40" r="5" fill="#333"/>
+  <circle cx="35" cy="38" r="2" fill="white"/>
+  <circle cx="53" cy="38" r="2" fill="white"/>
+  
+  <!-- Cheeks -->
+  <ellipse cx="26" cy="48" rx="4" ry="2.5" fill="#FF9999" opacity="0.7"/>
+  <ellipse cx="58" cy="48" rx="4" ry="2.5" fill="#FF9999" opacity="0.7"/>
+  
+  <!-- Smile -->
+  <path d="M33 53 Q42 62 51 53" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Money Bag -->
+  <path d="M72 58 Q72 42 80 38 Q85 36 88 42 Q92 52 88 62 Q85 68 78 65 Q72 62 72 58Z" fill="url(#bag)" stroke="#5D3A1A" stroke-width="1.5"/>
+  
+  <!-- Dollar Sign on Bag -->
+  <text x="80" y="56" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="14" fill="#FFD700" stroke="#B8860B" stroke-width="0.5">$</text>
+  
+  <!-- Bag Top/Rope -->
+  <ellipse cx="80" cy="38" rx="6" ry="3" fill="#A0522D" stroke="#5D3A1A" stroke-width="1"/>
+  <path d="M77 38 Q80 32 83 38" stroke="#5D3A1A" stroke-width="2" fill="none"/>
+</svg>
