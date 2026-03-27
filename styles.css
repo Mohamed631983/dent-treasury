@@ -927,34 +927,52 @@ body {
 /* Action Buttons in Table */
 .action-btns {
     display: flex;
-    gap: 6px;
+    gap: 8px;
+    justify-content: center;
 }
 
 .action-btn {
-    padding: 8px 14px;
+    width: 36px;
+    height: 36px;
     border: none;
-    border-radius: 8px;
+    border-radius: 50%;
     font-family: 'Cairo', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     transition: var(--transition);
     color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
 }
 
 .action-btn:hover {
-    transform: scale(1.05);
+    transform: scale(1.15);
 }
 
 .action-btn.print {
-    background: var(--info-color);
+    background: linear-gradient(135deg, #00bcd4, #0097a7);
+}
+
+.action-btn.print:hover {
+    box-shadow: 0 4px 15px rgba(0, 188, 212, 0.5);
 }
 
 .action-btn.edit {
-    background: var(--warning-color);
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.action-btn.edit:hover {
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.5);
 }
 
 .action-btn.delete {
-    background: var(--danger-color);
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.action-btn.delete:hover {
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
 }
 
 /* Users Management */
