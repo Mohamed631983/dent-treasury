@@ -2304,9 +2304,9 @@ function filterDatabaseByDate(type) {
         ? document.getElementById('db-search').value.toLowerCase()
         : document.getElementById('unjustified-search').value.toLowerCase();
     
-    // Parse date inputs (YYYY-MM-DD format)
-    const dateFrom = new Date(dateFromInput);
-    const dateTo = dateToInput ? new Date(dateToInput) : null;
+    // Parse date inputs (YYYY-MM-DD format) - normalize to start/end of day
+    const dateFrom = new Date(dateFromInput + 'T00:00:00');
+    const dateTo = dateToInput ? new Date(dateToInput + 'T23:59:59') : null;
     
     // Validate date range
     if (dateTo && dateFrom > dateTo) {
@@ -2336,9 +2336,9 @@ function filterDatabaseByDate(type) {
             let itemDate;
             if (itemDateStr.includes('/')) {
                 const parts = itemDateStr.split('/');
-                itemDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                itemDate = new Date(parts[2], parts[1] - 1, parts[0], 12, 0, 0);
             } else {
-                itemDate = new Date(itemDateStr);
+                itemDate = new Date(itemDateStr + 'T12:00:00');
             }
             
             // Check date range
