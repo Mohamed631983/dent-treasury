@@ -2972,9 +2972,22 @@ function executePrint() {
                     body { padding: 0; } 
                     .print-receipt { border: none; } 
                 }
+                .watermark-img {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 75%;
+                    opacity: 0.15;
+                    z-index: -1;
+                    pointer-events: none;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
             </style>
         </head>
         <body>
+            <img class="watermark-img" src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt="">
             ${printContent}
         </body>
         </html>
