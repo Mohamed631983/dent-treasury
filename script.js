@@ -1814,6 +1814,12 @@ function showChangesSummary(changes, onConfirm) {
 
 // Save Cash Receipt
 function saveCashReceipt(isPrint = false) {
+    // التحقق من صلاحية الإدخال
+    if (!hasPermission('add')) {
+        showMessage('ليس لديك صلاحية لإضافة إيصال نقدي. يرجى مراجعة المسؤول.', 'error');
+        return;
+    }
+    
     const form = document.getElementById('cash-receipt-form');
     
     // Check mandatory fields
@@ -1854,6 +1860,12 @@ function saveCashReceipt(isPrint = false) {
     if (totalAmount <= 0) {
         showMessage('لا يمكن حفظ الإيصال بإجمالي صفر أو سالب! يجب إدخال مبلغ واحد على الأقل أكبر من صفر', 'error');
         document.querySelector('.account-input').focus();
+        return;
+    }
+
+    // If editing an existing record, skip the duplicate check to allow changing date/number
+    if (editingId && editingFirebaseKey) {
+        doSaveCashReceipt(isPrint);
         return;
     }
 
@@ -1983,6 +1995,12 @@ function finishSaveCashReceipt(receiptData, isPrint) {
 
 // Save Unjustified Payment
 function saveUnjustified(isPrint = false) {
+    // التحقق من صلاحية الإدخال
+    if (!hasPermission('add')) {
+        showMessage('ليس لديك صلاحية لإضافة مبلغ بدون وجه حق. يرجى مراجعة المسؤول.', 'error');
+        return;
+    }
+    
     // Check mandatory fields
     const receiptNo = document.getElementById('unjustified-receipt-no').value.trim();
     const name = document.getElementById('unjustified-name').value.trim();
@@ -4992,5 +5010,4 @@ function exportPersonReport() {
     // تصدير
     XLSX.writeFile(wb, `تقرير_${personName}_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
 }
-
 
