@@ -1166,6 +1166,12 @@ function updateDateInputs() {
     document.getElementById('payment-date').value = today;
     document.getElementById('unjustified-date').value = today;
     
+    // Set report end date to today
+    const reportTo = document.getElementById('report-to');
+    if (reportTo && !reportTo.value) {
+        reportTo.value = today;
+    }
+    
     // Update serial for unjustified
     updateUnjustifiedSerial();
 }
@@ -1513,6 +1519,13 @@ function navigateTo(page) {
         loadUsers();
     } else if (page === 'person-reports') {
         loadPersonNames();
+    } else if (page === 'reports') {
+        // Set report end date to today
+        const today = new Date().toISOString().split('T')[0];
+        const reportTo = document.getElementById('report-to');
+        if (reportTo && !reportTo.value) {
+            reportTo.value = today;
+        }
     }
 }
 
