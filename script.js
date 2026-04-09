@@ -1166,12 +1166,6 @@ function updateDateInputs() {
     document.getElementById('payment-date').value = today;
     document.getElementById('unjustified-date').value = today;
     
-    // Set report end date to today
-    const reportTo = document.getElementById('report-to');
-    if (reportTo && !reportTo.value) {
-        reportTo.value = today;
-    }
-    
     // Update serial for unjustified
     updateUnjustifiedSerial();
 }
@@ -1519,13 +1513,6 @@ function navigateTo(page) {
         loadUsers();
     } else if (page === 'person-reports') {
         loadPersonNames();
-    } else if (page === 'reports') {
-        // Set report end date to today
-        const today = new Date().toISOString().split('T')[0];
-        const reportTo = document.getElementById('report-to');
-        if (reportTo && !reportTo.value) {
-            reportTo.value = today;
-        }
     }
 }
 
@@ -1814,12 +1801,6 @@ function showChangesSummary(changes, onConfirm) {
 
 // Save Cash Receipt
 function saveCashReceipt(isPrint = false) {
-    // التحقق من صلاحية الإدخال
-    if (!hasPermission('add')) {
-        showMessage('ليس لديك صلاحية لإضافة إيصال نقدي. يرجى مراجعة المسؤول.', 'error');
-        return;
-    }
-    
     const form = document.getElementById('cash-receipt-form');
     
     // Check mandatory fields
@@ -1860,12 +1841,6 @@ function saveCashReceipt(isPrint = false) {
     if (totalAmount <= 0) {
         showMessage('لا يمكن حفظ الإيصال بإجمالي صفر أو سالب! يجب إدخال مبلغ واحد على الأقل أكبر من صفر', 'error');
         document.querySelector('.account-input').focus();
-        return;
-    }
-
-    // If editing an existing record, skip the duplicate check to allow changing date/number
-    if (editingId && editingFirebaseKey) {
-        doSaveCashReceipt(isPrint);
         return;
     }
 
@@ -1995,12 +1970,6 @@ function finishSaveCashReceipt(receiptData, isPrint) {
 
 // Save Unjustified Payment
 function saveUnjustified(isPrint = false) {
-    // التحقق من صلاحية الإدخال
-    if (!hasPermission('add')) {
-        showMessage('ليس لديك صلاحية لإضافة مبلغ بدون وجه حق. يرجى مراجعة المسؤول.', 'error');
-        return;
-    }
-    
     // Check mandatory fields
     const receiptNo = document.getElementById('unjustified-receipt-no').value.trim();
     const name = document.getElementById('unjustified-name').value.trim();
@@ -2322,9 +2291,9 @@ function filterDatabaseByDate(type) {
         ? document.getElementById('db-search').value.toLowerCase()
         : document.getElementById('unjustified-search').value.toLowerCase();
     
-    // Parse date inputs (YYYY-MM-DD format) - normalize to start/end of day
-    const dateFrom = new Date(dateFromInput + 'T00:00:00');
-    const dateTo = dateToInput ? new Date(dateToInput + 'T23:59:59') : null;
+    // Parse date inputs (YYYY-MM-DD format)
+    const dateFrom = new Date(dateFromInput);
+    const dateTo = dateToInput ? new Date(dateToInput) : null;
     
     // Validate date range
     if (dateTo && dateFrom > dateTo) {
@@ -2354,9 +2323,9 @@ function filterDatabaseByDate(type) {
             let itemDate;
             if (itemDateStr.includes('/')) {
                 const parts = itemDateStr.split('/');
-                itemDate = new Date(parts[2], parts[1] - 1, parts[0], 12, 0, 0);
+                itemDate = new Date(parts[2], parts[1] - 1, parts[0]);
             } else {
-                itemDate = new Date(itemDateStr + 'T12:00:00');
+                itemDate = new Date(itemDateStr);
             }
             
             // Check date range
@@ -2990,22 +2959,9 @@ function executePrint() {
                     body { padding: 0; } 
                     .print-receipt { border: none; } 
                 }
-                .watermark-img {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 75%;
-                    opacity: 0.15;
-                    z-index: -1;
-                    pointer-events: none;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
             </style>
         </head>
         <body>
-            <img class="watermark-img" src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png" alt="">
             ${printContent}
         </body>
         </html>
@@ -5010,4 +4966,5 @@ function exportPersonReport() {
     // تصدير
     XLSX.writeFile(wb, `تقرير_${personName}_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
 }
+
 
