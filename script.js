@@ -1896,14 +1896,22 @@ function saveCashReceipt(isPrint = false) {
                 });
             }
             
-            if (existing && !isPrint) {
-                showConfirm(
-                    'هذا الرقم مسجل مسبقاً. هل تريد التسجيل بنفس الرقم؟',
-                    () => doSaveCashReceipt(isPrint)
-                );
-            } else {
-                doSaveCashReceipt(isPrint);
+        if (existing && !isPrint) {
+            // If editing an existing record, try to show a changes summary before saving
+            if (editingId && editingFirebaseKey) {
+                const changes = generateCashChangesSummary();
+                if (changes && changes.length > 0) {
+                    showChangesSummary(changes, () => doSaveCashReceipt(isPrint));
+                    return;
+                }
             }
+            showConfirm(
+                'هذا الرقم مسجل مسبقاً. هل تريد التسجيل بنفس الرقم؟',
+                () => doSaveCashReceipt(isPrint)
+            );
+        } else {
+            doSaveCashReceipt(isPrint);
+        }
         })
         .catch((error) => {
             console.error('Error checking for duplicate:', error);
