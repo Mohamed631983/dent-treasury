@@ -1326,7 +1326,7 @@ function createDefaultAdminIfNeeded() {
                         role: 'admin',
                     gender: 'male',
                     avatar: 'male1',
-                    permissions: ['edit', 'delete', 'import', 'export', 'print'],
+                    permissions: ['edit', 'delete', 'import', 'export', 'print', 'add'],
                     createdAt: new Date().toISOString()
                 };
                 
@@ -1385,6 +1385,17 @@ function updateButtonsByPermissions() {
     const deleteSelectedBtn = document.getElementById('delete-selected');
     if (deleteSelectedBtn) {
         deleteSelectedBtn.style.display = (isAdmin || perms.includes('delete')) ? '' : 'none';
+    }
+
+    // Add permission controls for data entry (receipts)
+    const addCashBtn = document.getElementById('save-cash-receipt');
+    if (addCashBtn) {
+        addCashBtn.style.display = (isAdmin || perms.includes('add')) ? '' : 'none';
+    }
+
+    const addUnjustifiedBtn = document.getElementById('save-unjustified');
+    if (addUnjustifiedBtn) {
+        addUnjustifiedBtn.style.display = (isAdmin || perms.includes('add')) ? '' : 'none';
     }
     
     // ===== صفحة مبالغ بدون وجه حق =====
@@ -1814,6 +1825,18 @@ function showChangesSummary(changes, onConfirm) {
 
 // Save Cash Receipt
 function saveCashReceipt(isPrint = false) {
+    // Permission enforcement: allow adding only for users with 'add', and editing with 'edit'
+    if (editingId && editingFirebaseKey) {
+        if (!hasPermission('edit')) {
+            showMessage('ليس لديك صلاحية التعديل');
+            return;
+        }
+    } else {
+        if (!hasPermission('add')) {
+            showMessage('ليس لديك صلاحية إضافة بيانات');
+            return;
+        }
+    }
     const form = document.getElementById('cash-receipt-form');
     
     // Check mandatory fields
@@ -1983,6 +2006,18 @@ function finishSaveCashReceipt(receiptData, isPrint) {
 
 // Save Unjustified Payment
 function saveUnjustified(isPrint = false) {
+    // Permission enforcement: allow adding only for users with 'add', and editing with 'edit'
+    if (editingId && editingFirebaseKey) {
+        if (!hasPermission('edit')) {
+            showMessage('ليس لديك صلاحية التعديل');
+            return;
+        }
+    } else {
+        if (!hasPermission('add')) {
+            showMessage('ليس لديك صلاحية إضافة بيانات');
+            return;
+        }
+    }
     // Check mandatory fields
     const receiptNo = document.getElementById('unjustified-receipt-no').value.trim();
     const name = document.getElementById('unjustified-name').value.trim();
@@ -4979,5 +5014,3 @@ function exportPersonReport() {
     // تصدير
     XLSX.writeFile(wb, `تقرير_${personName}_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
 }
-
-
