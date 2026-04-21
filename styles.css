@@ -447,17 +447,28 @@ body {
 }
 
 .btn-light-nav {
-    background: linear-gradient(135deg, #cddc39, #afb42b);
-    color: #33691e;
-    border: 2px solid #827717;
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: #4a3000;
+    border: 2px solid #ff8f00;
     font-weight: 700;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
 }
 
 .btn-light-nav:hover {
-    background: linear-gradient(135deg, #dce775, #cddc39);
-    color: #1b5e20;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(205, 220, 57, 0.4);
+    background: linear-gradient(135deg, #ffca28, #ffc107);
+    color: #4a3000;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.5);
+}
+
+@media (max-width: 768px) {
+    .btn-light-nav {
+        font-size: 11px;
+        padding: 8px 10px;
+        width: 100%;
+    }
 }
 
 .btn-small {
@@ -2005,34 +2016,53 @@ body {
 /* Digital Clock Styles */
 .digital-clock {
     position: fixed;
-    top: 90px; /* Below the dark mode toggle (20px + 50px height + 20px spacing) */
-    left: 20px; /* Aligned with the dark mode toggle on opposite side */
+    top: 15px;
+    right: 200px;
     z-index: 1000;
     background: rgba(255, 255, 255, 0.9);
-    border-radius: 12px;
-    padding: 12px 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 8px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     backdrop-filter: blur(10px);
-    width: 200px; /* Fixed width to prevent it from being too large */
+    width: 150px;
 }
 
 .digital-clock .clock-time {
     font-family: 'Courier New', monospace;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
     color: var(--primary-color);
     letter-spacing: 1px;
 }
 
 .digital-clock .clock-date {
-    font-size: 14px;
+    font-size: 12px;
     color: var(--gray);
     font-weight: 500;
+}
+
+.digital-clock.hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .digital-clock {
+        width: 120px;
+        top: 12px;
+        right: 150px;
+        padding: 6px 10px;
+    }
+    .digital-clock .clock-time {
+        font-size: 16px;
+    }
+    .digital-clock .clock-date {
+        font-size: 10px;
+    }
 }
 
 /* Account Label Center Alignment */

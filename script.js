@@ -909,6 +909,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         console.log('Firebase initialized successfully');
         
+        // Hide clock initially until login
+        const clock = document.getElementById('digital-clock');
+        if (clock) clock.classList.add('hidden');
+        
         // Initialize digital clock
         initDigitalClock();
         
@@ -1460,6 +1464,10 @@ function handleLogout() {
     document.getElementById('main-page').classList.remove('active');
     document.getElementById('login-form').reset();
     
+    // Hide clock after logout
+    const clock = document.getElementById('digital-clock');
+    if (clock) clock.classList.add('hidden');
+    
     // Clear inactivity timer
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
@@ -1482,6 +1490,10 @@ function showMainPage() {
     document.getElementById('login-page').classList.remove('active');
     document.getElementById('main-page').classList.add('active');
     document.getElementById('current-user').textContent = currentUser.displayName || currentUser.username;
+    
+    // Show clock after login
+    const clock = document.getElementById('digital-clock');
+    if (clock) clock.classList.remove('hidden');
     
     // Show admin-only elements
     if (currentUser.role === 'admin') {
@@ -4919,7 +4931,7 @@ function renderPersonReportResults(results, personName) {
             });
             description = accounts.join(' + ');
         } else if (item.type === 'unjustified') {
-            description = item.notes || 'بدون بيان';
+            description = item.purpose || item.notes || 'بدون بيان';
         }
         
         html += `
