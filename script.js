@@ -2336,9 +2336,14 @@ function filterDatabaseByDate(type) {
         ? document.getElementById('db-date-to').value
         : document.getElementById('unjustified-date-to').value;
     
-    // Validate that start date is required
+    // Validate that both dates are required
     if (!dateFromInput) {
         showMessage('يجب تحديد تاريخ البداية أولاً', 'error');
+        return;
+    }
+    
+    if (!dateToInput) {
+        showMessage('يجب تحديد تاريخ النهاية أيضاً', 'error');
         return;
     }
     
@@ -2347,9 +2352,9 @@ function filterDatabaseByDate(type) {
         ? document.getElementById('db-search').value.toLowerCase()
         : document.getElementById('unjustified-search').value.toLowerCase();
     
-    // Parse date inputs (YYYY-MM-DD format)
-    const dateFrom = new Date(dateFromInput);
-    const dateTo = dateToInput ? new Date(dateToInput) : null;
+    // Parse date inputs (YYYY-MM-DD format) - set time to noon to avoid timezone issues
+    const dateFrom = new Date(dateFromInput + 'T12:00:00');
+    const dateTo = dateToInput ? new Date(dateToInput + 'T12:00:00') : null;
     
     // Validate date range
     if (dateTo && dateFrom > dateTo) {
@@ -2380,8 +2385,9 @@ function filterDatabaseByDate(type) {
             if (itemDateStr.includes('/')) {
                 const parts = itemDateStr.split('/');
                 itemDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                itemDate.setHours(12, 0, 0, 0);
             } else {
-                itemDate = new Date(itemDateStr);
+                itemDate = new Date(itemDateStr + 'T12:00:00');
             }
             
             // Check date range
