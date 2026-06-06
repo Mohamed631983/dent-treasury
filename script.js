@@ -1060,6 +1060,28 @@ function setupEventListeners() {
         input.addEventListener('input', calculateTotal);
     });
     
+    // No Period Checkbox - Disable/Enable period fields
+    const noPeriodCheckbox = document.getElementById('no-period');
+    if (noPeriodCheckbox) {
+        noPeriodCheckbox.addEventListener('change', function() {
+            const periodFrom = document.getElementById('period-from');
+            const periodTo = document.getElementById('period-to');
+            if (this.checked) {
+                periodFrom.value = '';
+                periodTo.value = '';
+                periodFrom.disabled = true;
+                periodTo.disabled = true;
+                periodFrom.style.opacity = '0.5';
+                periodTo.style.opacity = '0.5';
+            } else {
+                periodFrom.disabled = false;
+                periodTo.disabled = false;
+                periodFrom.style.opacity = '1';
+                periodTo.style.opacity = '1';
+            }
+        });
+    }
+    
     // Database Search
     document.getElementById('db-search-btn').addEventListener('click', () => searchDatabase('cash'));
     document.getElementById('db-search').addEventListener('input', (e) => {
@@ -1874,6 +1896,16 @@ function saveCashReceipt(isPrint = false) {
         return;
     }
     
+    // التحقق من الفترة أو بدون فترة
+    const noPeriod = document.getElementById('no-period').checked;
+    const periodFrom = document.getElementById('period-from').value.trim();
+    const periodTo = document.getElementById('period-to').value.trim();
+    if (!noPeriod && (!periodFrom || !periodTo)) {
+        showMessage('يجب إدخال الفترة من وإلى، أو تحديد "بدون فترة"');
+        document.getElementById('period-from').focus();
+        return;
+    }
+    
     // Validate dates
     if (!validateFormDates('cash')) {
         return;
@@ -1951,13 +1983,15 @@ function doSaveCashReceipt(isPrint) {
 
 function doSaveCashReceiptInternal(isPrint) {
     
+    const noPeriodChecked = document.getElementById('no-period').checked;
     const receiptData = {
         id: editingId || Date.now(),
         receiptNo: document.getElementById('receipt-no').value,
         payerName: document.getElementById('payer-name').value,
         paymentDate: convertFromDateInputFormat(document.getElementById('payment-date').value),
-        periodFrom: convertFromDateInputFormat(document.getElementById('period-from').value),
-        periodTo: convertFromDateInputFormat(document.getElementById('period-to').value),
+        periodFrom: noPeriodChecked ? '' : convertFromDateInputFormat(document.getElementById('period-from').value),
+        periodTo: noPeriodChecked ? '' : convertFromDateInputFormat(document.getElementById('period-to').value),
+        noPeriod: noPeriodChecked,
         accounts: {},
         total: parseFloat(document.getElementById('total-amount').textContent),
         totalWords: document.getElementById('total-words').textContent,
@@ -2142,8 +2176,21 @@ function resetCashReceiptForm() {
     document.getElementById('cash-receipt-form').reset();
     document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
     document.querySelectorAll('.account-input').forEach(input => input.value = 0);
+    
+    // إعادة تعيين بدون فترة
+    const noPeriodCheckbox = document.getElementById('no-period');
+    const periodFromInput = document.getElementById('period-from');
+    const periodToInput = document.getElementById('period-to');
+    if (noPeriodCheckbox) {
+        noPeriodCheckbox.checked = false;
+        periodFromInput.disabled = false;
+        periodToInput.disabled = false;
+        periodFromInput.style.opacity = '1';
+        periodToInput.style.opacity = '1';
+    }
+    
     calculateTotal();
-    originalEditData = null; // Clear original edit data
+    originalEditData = null;
 }
 
 function resetUnjustifiedForm() {
@@ -2499,8 +2546,27 @@ function editReceipt(id, type) {
                 document.getElementById('receipt-no').value = item.receiptNo;
                 document.getElementById('payer-name').value = item.payerName;
                 document.getElementById('payment-date').value = convertToDateInputFormat(item.paymentDate);
-                document.getElementById('period-from').value = convertToDateInputFormat(item.periodFrom);
-                document.getElementById('period-to').value = convertToDateInputFormat(item.periodTo);
+                
+                // التعامل مع بدون فترة
+                const noPeriodCheckbox = document.getElementById('no-period');
+                const periodFromInput = document.getElementById('period-from');
+                const periodToInput = document.getElementById('period-to');
+                
+                if (!item.periodFrom && !item.periodTo) {
+                    noPeriodCheckbox.checked = true;
+                    periodFromInput.disabled = true;
+                    periodToInput.disabled = true;
+                    periodFromInput.style.opacity = '0.5';
+                    periodToInput.style.opacity = '0.5';
+                } else {
+                    noPeriodCheckbox.checked = false;
+                    periodFromInput.disabled = false;
+                    periodToInput.disabled = false;
+                    periodFromInput.style.opacity = '1';
+                    periodToInput.style.opacity = '1';
+                    periodFromInput.value = convertToDateInputFormat(item.periodFrom);
+                    periodToInput.value = convertToDateInputFormat(item.periodTo);
+                }
                 
                 document.querySelectorAll('.account-input').forEach(input => {
                     input.value = item.accounts[input.dataset.account] || 0;
@@ -2700,6 +2766,16 @@ function preparePrint(type) {
         if (!paymentDate) {
             showMessage('يجب إدخال تاريخ الدفع');
             document.getElementById('payment-date').focus();
+            return;
+        }
+        
+        // التحقق من الفترة أو بدون فترة
+        const noPeriod = document.getElementById('no-period').checked;
+        const periodFrom = document.getElementById('period-from').value.trim();
+        const periodTo = document.getElementById('period-to').value.trim();
+        if (!noPeriod && (!periodFrom || !periodTo)) {
+            showMessage('يجب إدخال الفترة من وإلى، أو تحديد "بدون فترة"');
+            document.getElementById('period-from').focus();
             return;
         }
         
