@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://apis.google.com/js/api.js" defer></script>
+    <script src="https://accounts.google.com/gsi/client" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -86,6 +88,9 @@
                 </div>
                 <h2>مدفوعات الصناديق والمعاشات</h2>
                 <div class="user-info">
+                    <span id="connection-status" class="connection-status connected" title="حالة الاتصال">
+                        <i class="fas fa-wifi"></i> <span id="connection-text">متصل</span>
+                    </span>
                     <span id="current-user">المستخدم</span>
                     <button id="logout-btn" class="btn btn-small">
                         <i class="fas fa-sign-out-alt"></i> خروج
@@ -321,6 +326,9 @@
                             <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none;">
                             <button class="btn btn-warning btn-animated" id="backup-btn" onclick="BackupSystem.createBackup()">
                                 <i class="fas fa-download"></i> نسخ احتياطي
+                            </button>
+                            <button class="btn btn-success btn-animated" id="gdrive-backup-btn" onclick="GoogleDriveBackup.showSettings()">
+                                <i class="fab fa-google-drive"></i> رفع على Drive
                             </button>
                             <button class="btn btn-secondary btn-animated" id="restore-btn" onclick="document.getElementById('restore-file').click()">
                                 <i class="fas fa-upload"></i> استعادة
@@ -692,6 +700,40 @@
             <div class="modal-footer">
                 <button class="btn btn-success" id="confirm-save-changes"><i class="fas fa-check"></i> حفظ التغييرات</button>
                 <button class="btn btn-secondary" onclick="closeAllModals()"><i class="fas fa-times"></i> إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Drive Backup Settings Modal -->
+    <div id="gdrive-settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fab fa-google-drive"></i> إعدادات النسخ الاحتياطي على Google Drive</h3>
+                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">البريد الإلكتروني لحساب Google Drive:</label>
+                    <input type="email" id="gdrive-email" placeholder="example@gmail.com" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">Google Client ID (من Google Cloud Console):</label>
+                    <input type="text" id="gdrive-client-id" placeholder="xxxx.apps.googleusercontent.com" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+                    <small style="color: #666; margin-top: 5px; display: block;">من Google Cloud Console → APIs & Services → Credentials</small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="gdrive-auto-backup" style="width: 18px; height: 18px;">
+                        <span style="font-weight: 600;">تفعيل النسخ الاحتياطي التلقائي الشهري</span>
+                    </label>
+                </div>
+                <div id="gdrive-status" style="padding: 10px; border-radius: 6px; display: none; margin-bottom: 15px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" onclick="GoogleDriveBackup.saveSettings()"><i class="fas fa-save"></i> حفظ الإعدادات</button>
+                <button class="btn btn-primary" onclick="GoogleDriveBackup.connect()"><i class="fab fa-google"></i> ربط مع Google</button>
+                <button class="btn btn-warning" onclick="GoogleDriveBackup.uploadNow()"><i class="fas fa-cloud-upload-alt"></i> رفع الآن</button>
+                <button class="btn btn-secondary" onclick="closeAllModals()"><i class="fas fa-times"></i> إغلاق</button>
             </div>
         </div>
     </div>

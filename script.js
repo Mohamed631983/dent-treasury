@@ -426,6 +426,20 @@ function initPagination() {
     }, 1000);
 }
 
+// Generate skeleton loading rows
+function generateSkeletonRows(rows, cols) {
+    let html = '';
+    for (let i = 0; i < rows; i++) {
+        html += '<tr class="skeleton-row">';
+        for (let j = 0; j < cols; j++) {
+            const w = j === 0 ? '60px' : (j === cols - 1 ? '50px' : '100%');
+            html += `<td><div class="skeleton" style="height:14px;width:${w};"></div></td>`;
+        }
+        html += '</tr>';
+    }
+    return html;
+}
+
 // Render only current page items for cash receipts
 function renderCashDatabasePage(receipts) {
     const tbody = document.getElementById('cash-db-tbody');
@@ -672,6 +686,190 @@ function handleRestoreFile(input) {
     }
 }
 
+// ==========================================
+// GOOGLE DRIVE BACKUP SYSTEM
+// ==========================================
+const GoogleDriveBackup = {
+    CLIENT_ID: localStorage.getItem('gdrive_client_id') || '',
+    EMAIL: localStorage.getItem('gdrive_email') || '',
+    AUTO_BACKUP: localStorage.getItem('gdrive_auto_backup') === 'true',
+    TOKEN: null,
+    SCOPES: 'https://www.googleapis.com/auth/drive.file',
+    lastBackupMonth: localStorage.getItem('gdrive_last_backup_month') || '',
+
+    showSettings() {
+        if (!hasPermission('backup')) {
+            notifications.warning('ليس لديك صلاحية النسخ الاحتياطي');
+            return;
+        }
+        document.getElementById('gdrive-email').value = this.EMAIL;
+        document.getElementById('gdrive-client-id').value = this.CLIENT_ID;
+        document.getElementById('gdrive-auto-backup').checked = this.AUTO_BACKUP;
+        
+        const statusEl = document.getElementById('gdrive-status');
+        if (this.TOKEN) {
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#e8f5e9';
+            statusEl.style.color = '#2e7d32';
+            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> متصل بـ Google Drive بنجاح';
+        } else {
+            statusEl.style.display = 'none';
+        }
+        
+        document.getElementById('gdrive-settings-modal').classList.add('active');
+    },
+
+    saveSettings() {
+        this.EMAIL = document.getElementById('gdrive-email').value.trim();
+        this.CLIENT_ID = document.getElementById('gdrive-client-id').value.trim();
+        this.AUTO_BACKUP = document.getElementById('gdrive-auto-backup').checked;
+        
+        localStorage.setItem('gdrive_email', this.EMAIL);
+        localStorage.setItem('gdrive_client_id', this.CLIENT_ID);
+        localStorage.setItem('gdrive_auto_backup', this.AUTO_BACKUP);
+        
+        if (this.AUTO_BACKUP && this.CLIENT_ID) {
+            this.setupAutoBackup();
+        }
+        
+        notifications.success('تم حفظ إعدادات Google Drive بنجاح');
+        logAudit('gdrive_settings', 'تحديث إعدادات Google Drive', { email: this.EMAIL, autoBackup: this.AUTO_BACKUP });
+    },
+
+    async connect() {
+        const clientId = document.getElementById('gdrive-client-id').value.trim();
+        if (!clientId) {
+            notifications.warning('يجب إدخال Google Client ID أولاً');
+            return;
+        }
+        
+        this.CLIENT_ID = clientId;
+        localStorage.setItem('gdrive_client_id', clientId);
+        
+        try {
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: this.SCOPES,
+                callback: (tokenResponse) => {
+                    this.TOKEN = tokenResponse.access_token;
+                    const statusEl = document.getElementById('gdrive-status');
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#e8f5e9';
+                    statusEl.style.color = '#2e7d32';
+                    statusEl.innerHTML = '<i class="fas fa-check-circle"></i> تم الربط بنجاح! يمكنك الرفع الآن';
+                    notifications.success('تم الربط مع Google Drive بنجاح');
+                },
+                error_callback: (err) => {
+                    console.error('Google Auth error:', err);
+                    notifications.error('فشل في الربط مع Google: ' + (err.message || 'خطأ غير معروف'));
+                }
+            });
+            
+            tokenClient.requestAccessToken();
+        } catch (error) {
+            console.error('Google connect error:', error);
+            notifications.error('حدث خطأ في الاتصال بـ Google');
+        }
+    },
+
+    async createBackupBlob() {
+        const backupData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            createdBy: currentUser ? currentUser.displayName : 'System',
+            data: {}
+        };
+
+        const paths = ['cash_receipts', 'unjustified_payments', 'names', 'users', 'audit_logs'];
+        for (const path of paths) {
+            try {
+                const snapshot = await database.ref(path).once('value');
+                backupData.data[path] = snapshot.val() || {};
+            } catch (e) {
+                backupData.data[path] = {};
+            }
+        }
+
+        return new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    },
+
+    async uploadNow() {
+        if (!this.TOKEN) {
+            notifications.warning('يجب الربط مع Google Drive أولاً');
+            return;
+        }
+        
+        loadingOverlay.show('جاري الرفع على Google Drive...');
+        
+        try {
+            const blob = await this.createBackupBlob();
+            const fileName = `backup_${new Date().toISOString().split('T')[0]}.json`;
+            
+            const metadata = {
+                name: fileName,
+                mimeType: 'application/json'
+            };
+
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', blob);
+
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + this.TOKEN
+                },
+                body: form
+            });
+
+            const result = await response.json();
+            
+            loadingOverlay.hide();
+            
+            if (response.ok) {
+                notifications.success('تم رفع النسخة الاحتياطية على Google Drive بنجاح!');
+                logAudit('gdrive_backup', 'رفع نسخة احتياطية على Google Drive', { fileId: result.id, fileName });
+            } else {
+                notifications.error('فشل الرفع: ' + (result.error?.message || 'خطأ غير معروف'));
+            }
+        } catch (error) {
+            loadingOverlay.hide();
+            console.error('Google Drive upload error:', error);
+            notifications.error('حدث خطأ أثناء الرفع: ' + error.message);
+        }
+    },
+
+    setupAutoBackup() {
+        // Check every hour if it's time for monthly backup
+        setInterval(() => {
+            if (!this.AUTO_BACKUP || !this.TOKEN) return;
+            
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (currentMonth !== this.lastBackupMonth) {
+                console.log('Auto backup triggered for month:', currentMonth);
+                this.uploadNow().then(() => {
+                    this.lastBackupMonth = currentMonth;
+                    localStorage.setItem('gdrive_last_backup_month', currentMonth);
+                });
+            }
+        }, 3600000); // Check every hour
+        
+        // Also check immediately on page load
+        if (this.TOKEN && this.AUTO_BACKUP) {
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (currentMonth !== this.lastBackupMonth) {
+                setTimeout(() => {
+                    notifications.info('سيتم تنفيذ النسخ الاحتياطي التلقائي قريباً...');
+                    setTimeout(() => this.uploadNow(), 5000);
+                }, 10000);
+            }
+        }
+    }
+};
+
 // Database Keys
 const DB_KEYS = {
     USERS: 'payment_users',
@@ -734,8 +932,11 @@ let confirmCallback = null;
 let printData = null;
 let printType = null;
 let inactivityTimer = null;
-let originalEditData = null; // Store original data when editing
+let inactivityWarningTimer = null;
+let inactivityCountdown = null;
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const INACTIVITY_WARNING = 25 * 60 * 1000; // 25 minutes (warning 5 min before)
+let originalEditData = null; // Store original data when editing
 
 // Firebase Configuration
 // TODO: استبدل هذه القيم بقيم مشروعك من Firebase Console
@@ -858,11 +1059,56 @@ function deleteFromFirebase(path, callback) {
 function listenToFirebase(path, callback) {
     waitForFirebaseAuth(() => {
         const ref = getDbRef(path);
+        
+        // Listen for connection state
+        const connectedRef = database.ref('.info/connected');
+        connectedRef.on('value', (snap) => {
+            updateConnectionStatus(snap.val() ? 'connected' : 'offline');
+        });
+        
         ref.on('value', (snapshot) => {
             const data = snapshot.val();
             if (callback) callback(data);
+        }, (error) => {
+            console.error('Firebase listener error:', error);
+            notifications.error('خطأ في الاتصال بقاعدة البيانات: ' + error.message);
+            updateConnectionStatus('offline');
         });
     });
+}
+
+// Connection status management
+let lastDataCount = { cash: 0, unjustified: 0 };
+
+function updateConnectionStatus(status) {
+    const el = document.getElementById('connection-status');
+    const text = document.getElementById('connection-text');
+    if (!el || !text) return;
+    
+    el.className = 'connection-status ' + status;
+    
+    switch(status) {
+        case 'connected':
+            text.textContent = 'متصل';
+            el.querySelector('i').className = 'fas fa-wifi';
+            break;
+        case 'syncing':
+            text.textContent = 'جاري المزامنة...';
+            el.querySelector('i').className = 'fas fa-sync-alt';
+            break;
+        case 'offline':
+            text.textContent = 'غير متصل';
+            el.querySelector('i').className = 'fas fa-wifi-slash';
+            break;
+    }
+}
+
+function notifyDataUpdate(path, count) {
+    if (lastDataCount[path] > 0 && count > lastDataCount[path]) {
+        const diff = count - lastDataCount[path];
+        notifications.show('تم استلام ' + diff + ' سجل جديد', 'info');
+    }
+    lastDataCount[path] = count;
 }
 
 // الحصول على البيانات مرة واحدة
@@ -885,12 +1131,72 @@ function resetInactivityTimer() {
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
     }
+    if (inactivityWarningTimer) {
+        clearTimeout(inactivityWarningTimer);
+    }
+    if (inactivityCountdown) {
+        clearInterval(inactivityCountdown);
+    }
+    
+    // Remove warning modal if exists
+    const warningModal = document.getElementById('session-warning-modal');
+    if (warningModal) warningModal.remove();
+    
     if (currentUser) {
+        // Warning timer (5 min before logout)
+        inactivityWarningTimer = setTimeout(() => {
+            showSessionWarning();
+        }, INACTIVITY_WARNING);
+        
+        // Logout timer
         inactivityTimer = setTimeout(() => {
             handleLogout();
             showMessage('تم تسجيل الخروج تلقائياً بسبب عدم النشاط لمدة 30 دقيقة');
         }, INACTIVITY_TIMEOUT);
     }
+}
+
+// Show session warning with countdown
+function showSessionWarning() {
+    let remaining = 5 * 60; // 5 minutes in seconds
+    
+    // Create warning modal
+    const modal = document.createElement('div');
+    modal.id = 'session-warning-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+        <div style="background:white;border-radius:12px;padding:30px;text-align:center;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="font-size:48px;margin-bottom:15px;">⚠️</div>
+            <h3 style="margin:0 0 10px;color:#e65100;">تنبيه انتهاء الجلسة</h3>
+            <p style="margin:0 0 15px;color:#666;">ستنتهي جلستك تلقائياً خلال <span id="countdown-timer" style="font-weight:bold;color:#e65100;font-size:20px;">5:00</span></p>
+            <p style="margin:0 0 20px;color:#999;font-size:13px;">قم بأي نشاط (تحريك الماوس أو كتابة) للحفاظ على الجلسة</p>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button onclick="extendSession()" style="padding:10px 25px;background:#1976d2;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">الحفاظ على الجلسة</button>
+                <button onclick="handleLogout()" style="padding:10px 25px;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">تسجيل خروج</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Countdown
+    inactivityCountdown = setInterval(() => {
+        remaining--;
+        const min = Math.floor(remaining / 60);
+        const sec = remaining % 60;
+        const timerEl = document.getElementById('countdown-timer');
+        if (timerEl) {
+            timerEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+        }
+        if (remaining <= 0) {
+            clearInterval(inactivityCountdown);
+        }
+    }, 1000);
+}
+
+// Extend session
+function extendSession() {
+    resetInactivityTimer();
+    showMessage('تم تجديد الجلسة بنجاح', 'success');
 }
 
 // Add event listeners for activity
@@ -909,6 +1215,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         console.log('Firebase initialized successfully');
         
+        // Internet connection detection
+        window.addEventListener('online', () => {
+            updateConnectionStatus('syncing');
+            notifications.success('تم استعادة الاتصال بالإنترنت');
+            setTimeout(() => updateConnectionStatus('connected'), 2000);
+        });
+        
+        window.addEventListener('offline', () => {
+            updateConnectionStatus('offline');
+            notifications.warning('انقطع الاتصال بالإنترنت - تعمل في وضع عدم الاتصال');
+        });
+        
         // Hide clock initially until login
         const clock = document.getElementById('digital-clock');
         if (clock) clock.classList.add('hidden');
@@ -926,6 +1244,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDateInputs();
         setupRealtimeListeners();
         initPagination();
+        
+        // Initialize Google Drive auto-backup if configured
+        if (GoogleDriveBackup.AUTO_BACKUP && GoogleDriveBackup.CLIENT_ID) {
+            GoogleDriveBackup.setupAutoBackup();
+        }
         
         // تحميل أسماء الأشخاص عند فتح صفحة التقرير
         const personReportsPage = document.getElementById('person-reports');
@@ -1005,6 +1328,7 @@ function setupRealtimeListeners() {
             // أخذ آخر 500 record فقط لتجنب التحميل الزائد
             const limitedReceipts = receipts.slice(-500);
             renderCashDatabase(limitedReceipts);
+            notifyDataUpdate('cash', receipts.length);
         }
     });
     
@@ -1020,6 +1344,7 @@ function setupRealtimeListeners() {
             // أخذ آخر 500 record فقط لتجنب التحميل الزائد
             const limitedPayments = payments.slice(-500);
             renderUnjustifiedDatabase(limitedPayments);
+            notifyDataUpdate('unjustified', payments.length);
         }
     });
 }
@@ -1402,6 +1727,10 @@ function updateButtonsByPermissions() {
     if (backupBtn) {
         backupBtn.style.display = (isAdmin || perms.includes('backup')) ? '' : 'none';
     }
+    const gdriveBtn = document.getElementById('gdrive-backup-btn');
+    if (gdriveBtn) {
+        gdriveBtn.style.display = (isAdmin || perms.includes('backup')) ? '' : 'none';
+    }
     
     const restoreBtn = document.getElementById('restore-btn');
     if (restoreBtn) {
@@ -1495,6 +1824,18 @@ function handleLogout() {
         clearTimeout(inactivityTimer);
         inactivityTimer = null;
     }
+    if (inactivityWarningTimer) {
+        clearTimeout(inactivityWarningTimer);
+        inactivityWarningTimer = null;
+    }
+    if (inactivityCountdown) {
+        clearInterval(inactivityCountdown);
+        inactivityCountdown = null;
+    }
+    
+    // Remove warning modal
+    const warningModal = document.getElementById('session-warning-modal');
+    if (warningModal) warningModal.remove();
     
     // Hide admin-only elements
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
@@ -2264,6 +2605,10 @@ function updateNamesListWithName(name) {
 function loadDatabase(type) {
     console.log('Loading database for type:', type);
     if (type === 'cash') {
+        // Show skeleton while loading
+        const tbody = document.getElementById('cash-db-tbody');
+        if (tbody) tbody.innerHTML = generateSkeletonRows(5, 16);
+        
         getFromFirebase('cash_receipts', (error, data) => {
             console.log('Cash receipts from Firebase - Error:', error, 'Data:', data);
             let receipts = [];
@@ -2286,6 +2631,10 @@ function loadDatabase(type) {
             }, 100);
         });
     } else {
+        // Show skeleton while loading
+        const tbody = document.getElementById('unjustified-db-tbody');
+        if (tbody) tbody.innerHTML = generateSkeletonRows(5, 9);
+        
         getFromFirebase('unjustified_payments', (error, data) => {
             let payments = [];
             if (!error && data) {
@@ -3376,7 +3725,7 @@ function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">جاري التحميل...</td></tr>';
+    tbody.innerHTML = generateSkeletonRows(4, 7);
     
     // قراءة المستخدمين من Firebase
     const usersRef = database.ref('users');
@@ -3697,7 +4046,7 @@ function loadAuditLogs() {
     const tbody = document.getElementById('audit-tbody');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">جاري التحميل...</td></tr>';
+    tbody.innerHTML = generateSkeletonRows(4, 5);
     
     database.ref('audit_logs').orderByChild('timestamp').limitToLast(100).once('value')
         .then((snapshot) => {
