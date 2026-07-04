@@ -75,6 +75,8 @@ body {
     margin: 0 auto;
     min-height: 100vh;
     padding: 20px 40px;
+    position: relative;
+    overflow: hidden;
 }
 
 .login-side {
@@ -100,9 +102,15 @@ body {
         0 0 20px rgba(21, 101, 192, 0.15);
     width: 420px;
     text-align: center;
-    animation: slideUp 0.6s ease;
+    animation: loginBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
     border: 2px solid rgba(66, 165, 245, 0.3);
     flex-shrink: 0;
+}
+
+@keyframes loginBounce {
+    0% { opacity: 0; transform: translateY(40px) scale(0.9); }
+    60% { transform: translateY(-8px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes slideUp {
@@ -2987,5 +2995,370 @@ body {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     border-color: var(--primary-color);
     box-shadow: 0 4px 15px rgba(var(--primary-color-rgb, 21, 101, 192), 0.4);
+}
+
+/* ==========================================
+   DASHBOARD STYLES
+   ========================================== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+
+.stat-icon {
+    width: 55px;
+    height: 55px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-blue .stat-icon { background: linear-gradient(135deg, #1565c0, #1976d2); }
+.stat-green .stat-icon { background: linear-gradient(135deg, #2e7d32, #388e3c); }
+.stat-orange .stat-icon { background: linear-gradient(135deg, #e65100, #f57c00); }
+.stat-red .stat-icon { background: linear-gradient(135deg, #c62828, #d32f2f); }
+
+.stat-number {
+    font-size: 26px;
+    font-weight: 800;
+    color: #1565c0;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #666;
+    margin-top: 2px;
+}
+
+.charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.chart-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.chart-card h3 {
+    font-size: 16px;
+    color: #1565c0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e3f2fd;
+}
+
+.chart-card h3 i {
+    margin-left: 8px;
+    color: #FFD700;
+}
+
+.chart-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.dashboard-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.recent-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+.recent-item:hover {
+    background: #f5f5f5;
+}
+
+.recent-item:last-child {
+    border-bottom: none;
+}
+
+.recent-item .amount {
+    font-weight: 700;
+    color: #2e7d32;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.accounts-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.account-summary-item {
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    border-left: 4px solid var(--primary-color);
+}
+
+.account-summary-item .acc-name {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.account-summary-item .acc-total {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1565c0;
+    font-family: 'Tajawal', sans-serif;
+}
+
+/* Print Dashboard Styles */
+@media print {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .dashboard-bottom-row { grid-template-columns: 1fr; }
+    .stat-card { break-inside: avoid; }
+    .chart-card { break-inside: avoid; }
+}
+
+@media (max-width: 768px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .dashboard-bottom-row { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .stat-number { font-size: 20px; }
+}
+
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+}
+
+/* ==========================================
+   BUTTON & NAV ANIMATIONS
+   ========================================== */
+.btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.btn:active {
+    transform: translateY(0) scale(0.97);
+}
+
+.nav-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-btn:hover {
+    transform: translateY(-2px);
+}
+
+.nav-btn:active {
+    transform: translateY(0) scale(0.97);
+}
+
+.nav-btn.active {
+    animation: navPulse 0.4s ease;
+}
+
+@keyframes navPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.content-page {
+    animation: pageSlideIn 0.4s ease;
+}
+
+@keyframes pageSlideIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   ANIMATED BACKGROUND
+   ========================================== */
+.animated-bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.12;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.orb-1 {
+    width: 500px;
+    height: 500px;
+    background: #FFD700;
+    top: -100px;
+    right: -100px;
+    animation: orbFloat1 15s ease-in-out infinite;
+}
+
+.orb-2 {
+    width: 400px;
+    height: 400px;
+    background: #42a5f5;
+    bottom: -100px;
+    left: -100px;
+    animation: orbFloat2 18s ease-in-out infinite;
+}
+
+.orb-3 {
+    width: 300px;
+    height: 300px;
+    background: #66bb6a;
+    top: 50%;
+    left: 50%;
+    animation: orbFloat3 12s ease-in-out infinite;
+}
+
+@keyframes orbFloat1 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-80px, 80px); }
+}
+
+@keyframes orbFloat2 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(60px, -60px); }
+}
+
+@keyframes orbFloat3 {
+    0%, 100% { transform: translate(-50%, -50%); }
+    50% { transform: translate(-30%, -70%); }
+}
+
+/* Login page animated sparkles */
+#login-page {
+    position: relative;
+    overflow: hidden;
+}
+
+#login-page::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,0.2), transparent),
+        radial-gradient(2px 2px at 30% 60%, rgba(255,255,255,0.15), transparent),
+        radial-gradient(2px 2px at 50% 10%, rgba(255,255,255,0.18), transparent),
+        radial-gradient(2px 2px at 70% 40%, rgba(255,255,255,0.12), transparent),
+        radial-gradient(2px 2px at 90% 80%, rgba(255,255,255,0.15), transparent),
+        radial-gradient(2px 2px at 15% 85%, rgba(255,255,255,0.12), transparent),
+        radial-gradient(2px 2px at 60% 90%, rgba(255,255,255,0.18), transparent),
+        radial-gradient(2px 2px at 85% 15%, rgba(255,255,255,0.1), transparent);
+    background-size: 200px 200px;
+    animation: sparkle 10s linear infinite;
+}
+
+@keyframes sparkle {
+    from { background-position: 0 0; }
+    to { background-position: 250px 250px; }
+}
+
+/* Stat cards entrance animation */
+.stat-card {
+    animation: cardFadeIn 0.5s ease backwards;
+}
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Chart cards entrance */
+.chart-card {
+    animation: chartFadeIn 0.5s ease backwards;
+    animation-delay: 0.3s;
+}
+
+@keyframes chartFadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Login box enhanced animation */
+.login-box {
+    animation: loginBoxEntry 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes loginBoxEntry {
+    from { opacity: 0; transform: translateY(40px) scale(0.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Smooth scroll for all */
+* {
+    scroll-behavior: smooth;
 }
 

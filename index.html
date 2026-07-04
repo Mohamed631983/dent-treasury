@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدفوعات الصناديق والمعاشات - كلية طب الأسنان</title>
-    <link rel="stylesheet" href="styles.css?v=40">
+    <link rel="stylesheet" href="styles.css?v=51">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,6 +23,11 @@
     <link rel="apple-touch-icon" href="favicon.svg">
 </head>
 <body>
+<!-- Animated Background Orbs -->
+<div class="animated-bg-orb orb-1"></div>
+<div class="animated-bg-orb orb-2"></div>
+<div class="animated-bg-orb orb-3"></div>
+
 <!-- Dark Mode Toggle Button (Hidden) -->
 <button class="theme-toggle" id="theme-toggle" title="تبديل المظهر" style="display: none;">
     <i class="fas fa-moon"></i>
@@ -239,7 +244,10 @@
         </div>
 
         <nav class="main-nav">
-            <button class="nav-btn active" data-page="cash-receipt">
+            <button class="nav-btn active" data-page="dashboard">
+                <i class="fas fa-chart-pie"></i> مخطط بياني
+            </button>
+            <button class="nav-btn" data-page="cash-receipt">
                 <i class="fas fa-receipt"></i> بيان استلام نقدية
             </button>
             <button class="nav-btn" data-page="unjustified-payment">
@@ -260,6 +268,100 @@
         </nav>
 
         <main class="main-content">
+            <!-- مخطط بياني -->
+            <div id="dashboard" class="content-page active">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: white;"><i class="fas fa-chart-pie"></i> مخطط بياني</h2>
+                    <div>
+                        <button class="btn btn-small" onclick="printDashboard()" style="background: rgba(255,255,255,0.2); color: white;">
+                            <i class="fas fa-print"></i> طباعة
+                        </button>
+                        <button class="btn btn-small" onclick="exportDashboardPDF()" style="background: rgba(255,255,255,0.2); color: white;">
+                            <i class="fas fa-file-pdf"></i> حفظ PDF
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="date-filter">
+                    <div class="date-filter-group">
+                        <label><i class="fas fa-calendar-alt"></i> من تاريخ:</label>
+                        <input type="date" id="dashboard-date-from" class="date-input">
+                    </div>
+                    <div class="date-filter-group">
+                        <label><i class="fas fa-calendar-alt"></i> إلى تاريخ:</label>
+                        <input type="date" id="dashboard-date-to" class="date-input">
+                    </div>
+                    <button class="btn btn-info btn-animated" onclick="loadDashboard()">
+                        <i class="fas fa-filter"></i> تصفية
+                    </button>
+                    <button class="btn btn-secondary btn-animated" onclick="resetDashboardDates()">
+                        <i class="fas fa-undo"></i> إعادة تعيين
+                    </button>
+                </div>
+                
+                <div id="dashboard-content">
+                    <div class="stats-grid">
+                        <div class="stat-card stat-blue">
+                            <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-number" id="stat-total-receipts">0</div>
+                                <div class="stat-label">إجمالي الإيصالات</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-green">
+                            <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-number" id="stat-total-amount">0</div>
+                                <div class="stat-label">إجمالي المبالغ المحصلة</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-orange">
+                            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-number" id="stat-unjustified-count">0</div>
+                                <div class="stat-label">صرف بدون وجه حق</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-red">
+                            <div class="stat-icon"><i class="fas fa-money-bill-alt"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-number" id="stat-unjustified-amount">0</div>
+                                <div class="stat-label">مبالغ الصرف بدون وجه حق</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-pie"></i> توزيع الإيصالات حسب الشهر</h3>
+                            <canvas id="monthly-chart" width="400" height="300"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-line"></i> المبالغ المحصلة خلال آخر 12 شهر</h3>
+                            <canvas id="amount-chart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-bottom-row">
+                        <div class="chart-card">
+                            <h3><i class="fas fa-list"></i> آخر الإيصالات</h3>
+                            <div id="dashboard-recent-receipts" class="recent-list"></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3><i class="fas fa-list"></i> آخر الصرف بدون وجه حق</h3>
+                            <div id="dashboard-recent-unjustified" class="recent-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-row">
+                        <div class="chart-card full-width">
+                            <h3><i class="fas fa-chart-bar"></i> ملخص الحسابات</h3>
+                            <div class="accounts-summary" id="dashboard-accounts-summary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- صفحة إيصال الاستلام النقدي -->
             <div id="cash-receipt" class="content-page active">
                 <div class="receipt-container">

@@ -2290,8 +2290,8 @@ function showMainPage() {
     // تحديث الأزرار حسب الصلاحيات
     updateButtonsByPermissions();
     
-    // Navigate to cash receipt page by default
-    navigateTo('cash-receipt');
+    // Navigate to dashboard by default
+    navigateTo('dashboard');
     
     // Load database
     loadDatabase('cash');
@@ -2336,7 +2336,378 @@ function navigateTo(page) {
         if (reportTo && !reportTo.value) {
             reportTo.value = today;
         }
+    } else if (page === 'dashboard') {
+        if (!document.getElementById('dashboard-date-from').value) {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dashboard-date-from').value = today;
+            document.getElementById('dashboard-date-to').value = today;
+        }
+        loadDashboard();
     }
+}
+
+// ==========================================
+// مخطط بياني (Dashboard)
+// ==========================================
+function loadDashboard() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const dateFrom = document.getElementById('dashboard-date-from').value || todayStr;
+    const dateTo = document.getElementById('dashboard-date-to').value || todayStr;
+    
+    // Set default dates if empty
+    if (!document.getElementById('dashboard-date-from').value) {
+        document.getElementById('dashboard-date-from').value = todayStr;
+    }
+    if (!document.getElementById('dashboard-date-to').value) {
+        document.getElementById('dashboard-date-to').value = todayStr;
+    }
+    
+    waitForFirebaseAuth(() => {
+        database.ref('cash_receipts').once('value').then(snap => {
+            const allReceipts = snap.val() ? Object.values(snap.val()) : [];
+            const receipts = filterByDate(allReceipts, dateFrom, dateTo);
+            updateDashboardReceipts(receipts);
+        });
+        
+        database.ref('unjustified_payments').once('value').then(snap => {
+            const allPayments = snap.val() ? Object.values(snap.val()) : [];
+            const payments = filterByDate(allPayments, dateFrom, dateTo);
+            updateDashboardUnjustified(payments);
+        });
+    });
+}
+
+function filterByDate(items, fromStr, toStr) {
+    const fromParts = fromStr.split('-');
+    const from = new Date(parseInt(fromParts[0]), parseInt(fromParts[1]) - 1, parseInt(fromParts[2]));
+    
+    const toParts = toStr.split('-');
+    const to = new Date(parseInt(toParts[0]), parseInt(toParts[1]) - 1, parseInt(toParts[2]));
+    to.setHours(23, 59, 59, 999);
+    
+    return items.filter(item => {
+        if (!item.paymentDate) return false;
+        const parts = item.paymentDate.split('/');
+        if (parts.length < 3) return false;
+        const itemDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        return itemDate >= from && itemDate <= to;
+    });
+}
+
+function resetDashboardDates() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dashboard-date-from').value = today;
+    document.getElementById('dashboard-date-to').value = today;
+    loadDashboard();
+}
+
+function updateDashboardReceipts(receipts) {
+    // Stats
+    document.getElementById('stat-total-receipts').textContent = receipts.length.toLocaleString('ar-EG');
+    
+    let totalAmount = 0;
+    const monthlyData = {};
+    const accountTotals = {};
+    const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    
+    receipts.forEach(r => {
+        const amount = parseFloat(r.total) || 0;
+        totalAmount += amount;
+        
+        // Monthly data
+        if (r.paymentDate) {
+            const parts = r.paymentDate.split('/');
+            if (parts.length >= 2) {
+                const monthIdx = parseInt(parts[1]) - 1;
+                const key = months[monthIdx] || 'غير معروف';
+                monthlyData[key] = (monthlyData[key] || 0) + amount;
+            }
+        }
+        
+        // Account totals
+        if (r.accounts) {
+            Object.entries(r.accounts).forEach(([name, val]) => {
+                if (val && parseFloat(val) > 0) {
+                    accountTotals[name] = (accountTotals[name] || 0) + parseFloat(val);
+                }
+            });
+        }
+    });
+    
+    document.getElementById('stat-total-amount').textContent = formatCurrency(totalAmount);
+    
+    // Recent receipts
+    const recent = receipts.slice(-10).reverse();
+    const recentHtml = recent.map(r => 
+        `<div class="recent-item">
+            <span>${r.payerName || r.receiptNo || 'بدون اسم'} - ${r.paymentDate || ''}</span>
+            <span class="amount">${formatCurrency(parseFloat(r.total) || 0)}</span>
+        </div>`
+    ).join('');
+    document.getElementById('dashboard-recent-receipts').innerHTML = recentHtml || '<p style="text-align:center;color:#999;">لا توجد إيصالات</p>';
+    
+    // Monthly chart
+    drawMonthlyChart(monthlyData);
+    
+    // Accounts summary
+    renderAccountsSummary(accountTotals);
+}
+
+function updateDashboardUnjustified(payments) {
+    let totalAmount = 0;
+    
+    payments.forEach(p => {
+        totalAmount += parseFloat(p.amount) || 0;
+    });
+    
+    document.getElementById('stat-unjustified-count').textContent = payments.length.toLocaleString('ar-EG');
+    document.getElementById('stat-unjustified-amount').textContent = formatCurrency(totalAmount);
+    
+    // Recent unjustified
+    const recent = payments.slice(-10).reverse();
+    const recentHtml = recent.map(p => 
+        `<div class="recent-item">
+            <span>${p.name || p.receiptNo || 'بدون اسم'} - ${p.paymentDate || ''}</span>
+            <span class="amount" style="color:#c62828;">${formatCurrency(parseFloat(p.amount) || 0)}</span>
+        </div>`
+    ).join('');
+    document.getElementById('dashboard-recent-unjustified').innerHTML = recentHtml || '<p style="text-align:center;color:#999;">لا توجد سجلات</p>';
+    
+    // Amount chart
+    drawAmountChart(payments);
+}
+
+function drawMonthlyChart(data) {
+    const canvas = document.getElementById('monthly-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    if (labels.length === 0) {
+        ctx.fillStyle = '#999';
+        ctx.font = '14px Tajawal';
+        ctx.textAlign = 'center';
+        ctx.fillText('لا توجد بيانات', W/2, H/2);
+        return;
+    }
+    
+    const maxVal = Math.max(...values) || 1;
+    const barWidth = Math.min(50, (W - 80) / labels.length - 10);
+    const chartHeight = H - 80;
+    const colors = ['#1565c0','#1976d2','#42a5f5','#2e7d32','#388e3c','#66bb6a','#e65100','#f57c00','#ff9800','#c62828','#d32f2f','#ef5350'];
+    
+    // Draw bars
+    labels.forEach((label, i) => {
+        const x = 60 + i * (barWidth + 10);
+        const barHeight = (values[i] / maxVal) * chartHeight;
+        const y = H - 40 - barHeight;
+        
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.beginPath();
+        ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
+        ctx.fill();
+        
+        // Value on top
+        ctx.fillStyle = '#333';
+        ctx.font = '10px Tajawal';
+        ctx.textAlign = 'center';
+        ctx.fillText(formatShortNumber(values[i]), x + barWidth/2, y - 5);
+        
+        // Label below
+        ctx.fillStyle = '#666';
+        ctx.font = '9px Tajawal';
+        ctx.save();
+        ctx.translate(x + barWidth/2, H - 20);
+        ctx.rotate(-0.5);
+        ctx.fillText(label.substring(0, 5), 0, 0);
+        ctx.restore();
+    });
+}
+
+function drawAmountChart(payments) {
+    const canvas = document.getElementById('amount-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    
+    const monthlyData = {};
+    const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    
+    payments.forEach(p => {
+        if (p.paymentDate) {
+            const parts = p.paymentDate.split('/');
+            if (parts.length >= 2) {
+                const monthIdx = parseInt(parts[1]) - 1;
+                const key = months[monthIdx] || 'غير معروف';
+                monthlyData[key] = (monthlyData[key] || 0) + (parseFloat(p.amount) || 0);
+            }
+        }
+    });
+    
+    const labels = Object.keys(monthlyData);
+    const values = Object.values(monthlyData);
+    
+    if (labels.length === 0) {
+        ctx.fillStyle = '#999';
+        ctx.font = '14px Tajawal';
+        ctx.textAlign = 'center';
+        ctx.fillText('لا توجد بيانات', W/2, H/2);
+        return;
+    }
+    
+    const maxVal = Math.max(...values) || 1;
+    const chartHeight = H - 80;
+    const stepX = (W - 80) / (labels.length - 1 || 1);
+    
+    // Draw grid lines
+    ctx.strokeStyle = '#eee';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = 40 + (chartHeight / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(50, y);
+        ctx.lineTo(W - 20, y);
+        ctx.stroke();
+    }
+    
+    // Draw line
+    ctx.strokeStyle = '#c62828';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    labels.forEach((label, i) => {
+        const x = 60 + i * stepX;
+        const y = 40 + chartHeight - (values[i] / maxVal) * chartHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    
+    // Draw points
+    labels.forEach((label, i) => {
+        const x = 60 + i * stepX;
+        const y = 40 + chartHeight - (values[i] / maxVal) * chartHeight;
+        
+        ctx.fillStyle = '#c62828';
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.fillStyle = '#666';
+        ctx.font = '9px Tajawal';
+        ctx.textAlign = 'center';
+        ctx.save();
+        ctx.translate(x, H - 20);
+        ctx.rotate(-0.5);
+        ctx.fillText(label.substring(0, 5), 0, 0);
+        ctx.restore();
+    });
+}
+
+function renderAccountsSummary(accountTotals) {
+    const container = document.getElementById('dashboard-accounts-summary');
+    if (!container) return;
+    
+    const accounts = Object.entries(accountTotals);
+    if (accounts.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:#999;">لا توجد حسابات في هذه الفترة</p>';
+        return;
+    }
+    
+    const accountLabels = {
+        'estabd': 'استبعاد',
+        'aht': 'ا.ه.ت',
+        'sandog_tamen': 'صندوق التأمين',
+        'wheda_markabat': 'وحدة مركبات',
+        'nogaba': 'نقابة العاملين',
+        'tamenat': 'الهيئة العامة للتأمينات والمعاشات'
+    };
+    
+    let html = '';
+    accounts.forEach(([key, total]) => {
+        const label = accountLabels[key] || key;
+        html += `<div class="account-summary-item">
+            <div class="acc-name">${label}</div>
+            <div class="acc-total">${formatCurrency(total)}</div>
+        </div>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+function formatCurrency(num) {
+    return new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(num);
+}
+
+function formatShortNumber(num) {
+    if (num >= 1000000) return (num/1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num/1000).toFixed(1) + 'K';
+    return num.toFixed(0);
+}
+
+function printDashboard() {
+    const content = document.getElementById('dashboard-content');
+    if (!content) return;
+    
+    // Convert canvas elements to images
+    const canvases = content.querySelectorAll('canvas');
+    const canvasImages = [];
+    canvases.forEach((canvas, i) => {
+        try {
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL('image/png');
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.id = 'canvas-img-' + i;
+            canvasImages.push({ canvas, img, index: i });
+            canvas.parentNode.replaceChild(img, canvas);
+        } catch(e) {}
+    });
+    
+    const win = window.open('', '_blank');
+    win.document.write('<html><head><title>طباعة لوحة التحكم</title>');
+    win.document.write('<style>body{font-family:Tajawal,Arial,sans-serif;padding:20px;direction:rtl;text-align:right;}</style>');
+    win.document.write('<style>.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;}</style>');
+    win.document.write('<style>.stat-card{border:1px solid #ddd;border-radius:8px;padding:15px;display:flex;align-items:center;gap:12px;}</style>');
+    win.document.write('<style>.stat-icon{width:45px;height:45px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;}</style>');
+    win.document.write('<style>.stat-blue .stat-icon{background:#1565c0;}.stat-green .stat-icon{background:#2e7d32;}.stat-orange .stat-icon{background:#e65100;}.stat-red .stat-icon{background:#c62828;}</style>');
+    win.document.write('<style>.stat-number{font-size:22px;font-weight:800;color:#1565c0;}.stat-label{font-size:12px;color:#666;}</style>');
+    win.document.write('<style>.chart-card{border:1px solid #ddd;border-radius:8px;padding:15px;margin-bottom:15px;page-break-inside:avoid;}</style>');
+    win.document.write('<style>.chart-card h3{font-size:14px;color:#1565c0;border-bottom:2px solid #e3f2fd;padding-bottom:8px;margin-bottom:12px;}</style>');
+    win.document.write('<style>.recent-item{display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;}</style>');
+    win.document.write('<style>.accounts-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}</style>');
+    win.document.write('<style>.account-summary-item{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;border-right:4px solid #1565c0;}</style>');
+    win.document.write('<style>.account-summary-item .acc-name{font-size:11px;color:#666;}.account-summary-item .acc-total{font-size:16px;font-weight:700;color:#1565c0;}</style>');
+    win.document.write('<style>.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;}</style>');
+    win.document.write('<style>img{max-width:100%;height:auto;}</style>');
+    win.document.write('</head><body>');
+    win.document.write('<h2 style="text-align:center;color:#1565c0;">مخطط بياني - ' + new Date().toLocaleDateString('ar-EG') + '</h2>');
+    win.document.write('<p style="text-align:center;color:#666;">من: ' + document.getElementById('dashboard-date-from').value + ' - إلي: ' + document.getElementById('dashboard-date-to').value + '</p>');
+    win.document.write(content.innerHTML);
+    win.document.write('</body></html>');
+    win.document.close();
+    
+    // Restore canvases in original page
+    canvasImages.forEach(({ canvas, img, index }) => {
+        if (img.parentNode) img.parentNode.replaceChild(canvas, img);
+    });
+    
+    win.onload = function() {
+        win.print();
+    };
+}
+
+function exportDashboardPDF() {
+    showMessage('جاري تحضير الملف...', 'info');
+    printDashboard();
 }
 
 // Calculate Total
