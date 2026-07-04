@@ -334,6 +334,9 @@
                                 <i class="fas fa-upload"></i> استعادة
                             </button>
                             <input type="file" id="restore-file" accept=".json" style="display:none;" onchange="handleRestoreFile(this)">
+                            <button class="btn btn-primary btn-animated" id="print-selected-btn" style="display:none;">
+                                <i class="fas fa-print"></i> طباعة تحديد
+                            </button>
                             <button class="btn btn-danger btn-animated admin-only" id="delete-selected" style="display:none;">
                                 <i class="fas fa-trash"></i> حذف المحدد
                             </button>
@@ -415,6 +418,9 @@
                             </button>
                             <button class="btn btn-secondary btn-animated" onclick="document.getElementById('restore-file').click()">
                                 <i class="fas fa-upload"></i> استعادة
+                            </button>
+                            <button class="btn btn-primary btn-animated" id="print-unjustified-selected-btn" style="display:none;">
+                                <i class="fas fa-print"></i> طباعة تحديد
                             </button>
                             <button class="btn btn-danger btn-animated admin-only" id="delete-unjustified-selected" style="display:none;">
                                 <i class="fas fa-trash"></i> حذف المحدد
@@ -507,12 +513,13 @@
                             <div class="permissions-section">
                                 <h4>الصلاحيات:</h4>
                                 <div class="permissions-grid">
+                                    <label><input type="checkbox" class="perm-checkbox" value="add"> إدخال</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="edit"> تعديل</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="delete"> حذف</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="import"> استيراد Excel</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="export"> تصدير Excel</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="print"> طباعة</label>
-                                    <label><input type="checkbox" class="perm-checkbox" value="add"> إضافة بيانات</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="print_selected"> طباعة تحديد</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="backup"> نسخ احتياطي</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="restore"> استعادة</label>
                                 </div>

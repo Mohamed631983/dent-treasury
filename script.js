@@ -486,7 +486,7 @@ function renderCashDatabasePage(receipts) {
                     </button>` : ''}
                 </div>
             </td>
-            <td><input type="checkbox" data-id="${receipt.id}"></td>
+            <td><input type="checkbox" class="receipt-select" data-id="${receipt.id}" data-type="cash"></td>
             <td>${baseIndex + index + 1}</td>
             <td>${receipt.receiptNo}</td>
             <td>${receipt.payerName}</td>
@@ -566,7 +566,7 @@ function renderUnjustifiedDatabasePage(payments) {
                     </button>` : ''}
                 </div>
             </td>
-            <td><input type="checkbox" data-id="${payment.id}"></td>
+            <td><input type="checkbox" class="receipt-select" data-id="${payment.id}" data-type="unjustified"></td>
             <td>${baseIndex + index + 1}</td>
             <td>${payment.receiptNo}</td>
             <td>${payment.name}</td>
@@ -1452,6 +1452,16 @@ function setupEventListeners() {
     document.getElementById('delete-selected').addEventListener('click', () => deleteSelected('cash'));
     document.getElementById('delete-unjustified-selected').addEventListener('click', () => deleteSelected('unjustified'));
     
+    // Print Selected
+    const printSelectedBtn = document.getElementById('print-selected-btn');
+    if (printSelectedBtn) {
+        printSelectedBtn.addEventListener('click', printSelectedReceipts);
+    }
+    const printUnjustifiedSelectedBtn = document.getElementById('print-unjustified-selected-btn');
+    if (printUnjustifiedSelectedBtn) {
+        printUnjustifiedSelectedBtn.addEventListener('click', printSelectedReceipts);
+    }
+    
     // Export/Import
     document.getElementById('export-excel').addEventListener('click', () => exportToExcel('cash'));
     document.getElementById('import-excel').addEventListener('click', () => document.getElementById('excel-file').click());
@@ -1677,7 +1687,7 @@ function createDefaultAdminIfNeeded() {
                         role: 'admin',
                     gender: 'male',
                     avatar: 'male1',
-                    permissions: ['edit', 'delete', 'import', 'export', 'print', 'add'],
+                    permissions: ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'add'],
                     createdAt: new Date().toISOString()
                 };
                 
@@ -1742,6 +1752,11 @@ function updateButtonsByPermissions() {
         deleteSelectedBtn.style.display = (isAdmin || perms.includes('delete')) ? '' : 'none';
     }
 
+    const printSelectedBtn = document.getElementById('print-selected-btn');
+    if (printSelectedBtn) {
+        printSelectedBtn.style.display = (isAdmin || perms.includes('print_selected')) ? '' : 'none';
+    }
+
     // Add permission controls for data entry (receipts)
     const addCashBtn = document.getElementById('save-cash-receipt');
     if (addCashBtn) {
@@ -1773,6 +1788,11 @@ function updateButtonsByPermissions() {
     const unjustDeleteSelectedBtn = document.getElementById('delete-unjustified-selected');
     if (unjustDeleteSelectedBtn) {
         unjustDeleteSelectedBtn.style.display = (isAdmin || perms.includes('delete')) ? '' : 'none';
+    }
+
+    const printUnjustSelectedBtn = document.getElementById('print-unjustified-selected-btn');
+    if (printUnjustSelectedBtn) {
+        printUnjustSelectedBtn.style.display = (isAdmin || perms.includes('print_selected')) ? '' : 'none';
     }
     
     // ===== إخفاء أزرار النسخ الاحتياطي والاستعادة في صفحة مبالغ بدون وجه حق =====
@@ -3272,192 +3292,9 @@ function executePrint() {
         <html dir="rtl">
         <head>
             <title>طباعة الإيصال</title>
-            <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
             <style>
-                @page {
-                    size: A4;
-                    margin: 10mm;
-                }
-                html, body {
-                    margin: 0;
-                    padding: 0;
-                    min-height: 100%;
-                }
-                body { 
-                    font-family: 'Cairo', sans-serif; 
-                    margin: 0; 
-                    padding: 10px 0; 
-                    background: white;
-                }
-                body::before {
-                    content: "";
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    background-size: 75%;
-                    opacity: 0.15;
-                    z-index: -1;
-                    pointer-events: none;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                .print-receipt { 
-                    background: transparent;
-                    padding: 20px; 
-                    border: 2px solid #333;
-                    margin: 0 auto 15px auto;
-                    max-width: 800px;
-                    position: relative;
-                    page-break-inside: avoid;
-                }
-                .print-receipt-header { 
-                    margin-bottom: 15px; 
-                    padding-bottom: 15px; 
-                    border-bottom: 3px double #333;
-                }
-                .print-institution-names {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    width: 100%;
-                }
-                .print-uni-right {
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #1565c0;
-                    text-align: right;
-                    flex: 1;
-                }
-                .print-col-left {
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #1565c0;
-                    text-align: left;
-                    flex: 1;
-                }
-                .print-title-center {
-                    text-align: center;
-                    flex: 2;
-                }
-                .print-receipt-header h2 { 
-                    color: #333; 
-                    font-size: 22px; 
-                    margin: 5px 0; 
-                    font-weight: 700;
-                }
-                .print-receipt-body { margin: 20px 0; }
-                .print-row { 
-                    display: flex; 
-                    justify-content: space-between;
-                    margin-bottom: 12px; 
-                    padding: 8px 0; 
-                    border-bottom: 1px dotted #95a5a6;
-                    font-size: 15px;
-                    align-items: center;
-                }
-                .print-label { 
-                    font-weight: 700; 
-                    color: #1565c0; 
-                    min-width: 200px;
-                    font-size: 15px;
-                }
-                .print-value { 
-                    font-weight: 600; 
-                    flex: 1; 
-                    font-size: 15px; 
-                    text-align: right;
-                    margin-right: 20px;
-                }
-                .print-value.large { font-size: 16px; font-weight: 700; }
-                .print-accounts { 
-                    margin: 15px 0; 
-                    border-top: 2px solid #333;
-                    padding-top: 12px;
-                }
-                .print-accounts h4 { 
-                    text-align: center; 
-                    margin-bottom: 12px; 
-                    color: #1565c0; 
-                    font-size: 16px;
-                    font-weight: 700;
-                }
-                .print-accounts-table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    font-size: 13px;
-                    margin-bottom: 12px;
-                }
-                .print-accounts-table th,
-                .print-accounts-table td { 
-                    border: 1px solid #333; 
-                    padding: 6px 5px; 
-                    text-align: center; 
-                }
-                .print-accounts-table th { 
-                    background: #f5f5f5; 
-                    font-weight: 700; 
-                    font-size: 14px;
-                }
-                .print-accounts-table td {
-                    font-weight: 600;
-                }
-                .print-totals { 
-                    margin: 10px 0; 
-                    padding: 5px 0; 
-                    text-align: right;
-                }
-                .print-receipt-footer { 
-                    margin-top: 15px; 
-                    display: flex; 
-                    justify-content: space-around; 
-                    padding-top: 15px; 
-                    border-top: 2px solid #333;
-                }
-                .print-signature { 
-                    text-align: center; 
-                    min-width: 150px; 
-                    font-size: 15px; 
-                }
-                .print-signature p {
-                    font-weight: 600;
-                    font-size: 15px;
-                    margin: 0 0 10px 0;
-                }
-                .print-signature .line { 
-                    width: 150px; 
-                    border-top: 1px solid #333; 
-                    margin: 10px auto; 
-                }
-                .print-page-footer {
-                    margin-top: 30px;
-                    padding-top: 15px;
-                    border-top: 2px solid #333;
-                }
-                .print-footer-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    font-size: 13px;
-                    font-weight: 600;
-                }
-                .print-form-code {
-                    font-family: monospace;
-                    font-size: 13px;
-                    color: #333;
-                }
-                .print-by-user {
-                    font-size: 13px;
-                    font-weight: 600;
-                }
-                @media print { 
-                    body { padding: 0; } 
-                    .print-receipt { border: none; } 
-                }
+                ${getPrintCSS()}
             </style>
         </head>
         <body>
@@ -3498,11 +3335,11 @@ function generateCashReceiptHTML(data, isPreview) {
         <div class="print-receipt">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
-                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
+                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخزينة</div>
                     <div class="print-title-center">
                         <h2>بيان استلام نقدية</h2>
                     </div>
-                    <div class="print-col-left" style="text-align: left; color: #2196F3; font-weight: 700; font-size: 16px; display: flex; align-items: center;">الكود المؤسسي 20600105</div>
+                    <div class="print-col-left" style="text-align: center; color: #1565c0; font-weight: 700; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.8;"><span>الكود المؤسسي</span><span style="font-size: 16px; font-weight: 800;">20600105</span></div>
                 </div>
             </div>
             
@@ -3588,11 +3425,11 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
         <div class="print-receipt">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
-                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
+                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخزينة</div>
                     <div class="print-title-center">
                         <h2>مبالغ صرفت بدون وجه حق</h2>
                     </div>
-                    <div class="print-col-left" style="text-align: left; color: #2196F3; font-weight: 700; font-size: 16px; display: flex; align-items: center;">الكود المؤسسي 20600105</div>
+                    <div class="print-col-left" style="text-align: center; color: #1565c0; font-weight: 700; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.8;"><span>الكود المؤسسي</span><span style="font-size: 16px; font-weight: 800;">20600105</span></div>
                 </div>
             </div>
             
@@ -3720,6 +3557,141 @@ function printReceipt(id, type) {
         });
 }
 
+function getPrintCSS() {
+    return `
+        @page { size: A4; margin: 10mm; }
+        html, body { margin: 0; padding: 0; min-height: 100%; }
+        body { font-family: 'Tajawal', 'Cairo', sans-serif; margin: 0; padding: 10px 0; background: white; }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 75%;
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .print-receipt { background: transparent; padding: 20px; border: 2px solid #333; margin: 0 auto 15px auto; max-width: 800px; position: relative; page-break-inside: avoid; }
+        .print-receipt-header { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 3px double #333; }
+        .print-institution-names { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .print-uni-right { font-size: 16px; font-weight: 700; color: #1565c0; text-align: center; flex: 1; }
+        .print-col-left { font-size: 16px; font-weight: 700; color: #1565c0; text-align: left; flex: 1; }
+        .print-title-center { text-align: center; flex: 2; }
+        .print-receipt-header h2 { color: #1565c0; font-size: 22px; margin: 5px 0; font-weight: 700; border: 2px solid #1565c0; padding: 8px 25px; border-radius: 8px; display: inline-block; }
+        .print-receipt-body { margin: 20px 0; }
+        .print-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding: 8px 0; border-bottom: 1px dotted #95a5a6; font-size: 15px; align-items: center; }
+        .print-label { font-weight: 700; color: #1565c0; min-width: 200px; font-size: 15px; }
+        .print-value { font-weight: 600; flex: 1; font-size: 15px; text-align: right; margin-right: 20px; }
+        .print-value.large { font-size: 16px; font-weight: 700; }
+        .print-accounts { margin: 15px 0; border-top: 2px solid #333; padding-top: 12px; }
+        .print-accounts h4 { text-align: center; margin-bottom: 12px; color: #1565c0; font-size: 16px; font-weight: 700; }
+        .print-accounts-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+        .print-accounts-table th, .print-accounts-table td { border: 1px solid #333; padding: 6px 5px; text-align: center; }
+        .print-accounts-table th { background: #f5f5f5; font-weight: 700; font-size: 14px; }
+        .print-accounts-table td { font-weight: 600; }
+        .print-totals { margin: 10px 0; padding: 5px 0; text-align: right; }
+        .print-receipt-footer { margin-top: 15px; display: flex; justify-content: space-around; padding-top: 15px; border-top: 2px solid #333; }
+        .print-signature { text-align: center; min-width: 150px; font-size: 15px; }
+        .print-signature p { font-weight: 600; font-size: 15px; margin: 0 0 10px 0; }
+        .print-signature .line { width: 150px; border-top: 1px solid #333; margin: 10px auto; }
+        .print-page-footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #333; }
+        .print-footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
+        .print-form-code { font-family: monospace; font-size: 13px; color: #333; }
+        .print-by-user { font-size: 13px; font-weight: 600; }
+        @media print { body { padding: 0; } .print-receipt { border: none; } }
+    `;
+}
+
+function printSelectedReceipts() {
+    if (!hasPermission('print_selected')) {
+        showMessage('ليس لديك صلاحية استخدام طباعة التحديد');
+        return;
+    }
+
+    const selected = [];
+    document.querySelectorAll('input.receipt-select:checked').forEach(cb => {
+        selected.push({ id: cb.dataset.id, type: cb.dataset.type || 'cash' });
+    });
+
+    if (selected.length === 0) {
+        showMessage('لم تقم بتحديد إيصالات للطباعة');
+        return;
+    }
+
+    const printedByName = currentUser ? (currentUser.displayName || currentUser.username) : '';
+
+    const printPromises = selected.map(item => {
+        const path = item.type === 'cash' ? 'cash_receipts' : 'unjustified_payments';
+        return database.ref(path).orderByChild('id').equalTo(parseInt(item.id)).once('value').then(snap => {
+            const d = snap.val();
+            if (!d) return '';
+            const rec = Object.values(d)[0];
+            if (item.type === 'cash') {
+                return generateCashReceiptHTML({
+                    receiptNo: rec.receiptNo,
+                    payerName: rec.payerName,
+                    paymentDate: rec.paymentDate,
+                    periodFrom: rec.periodFrom,
+                    periodTo: rec.periodTo,
+                    accounts: rec.accounts || {},
+                    total: rec.total.toFixed(2),
+                    totalWords: rec.totalWords,
+                    printedBy: printedByName
+                }, false);
+            } else {
+                const amount = rec.amount || 0;
+                return generateUnjustifiedReceiptHTML({
+                    receiptNo: rec.receiptNo,
+                    name: rec.name,
+                    paymentDate: rec.paymentDate,
+                    amount: amount,
+                    amountWords: numberToArabicWords(amount) + ' فقط لا غير',
+                    purpose: rec.purpose,
+                    printedBy: printedByName
+                }, false);
+            }
+        });
+    });
+
+    Promise.all(printPromises).then(contents => {
+        const items = contents.filter(Boolean);
+        if (items.length === 0) {
+            showMessage('لا توجد إيصالات قابلة للطباعة');
+            return;
+        }
+        const pw = window.open('', '_blank');
+        let printContent = '';
+        items.forEach((c, i) => {
+            if (i > 0) printContent += '<div style="page-break-after: always;"></div>';
+            printContent += c;
+        });
+        pw.document.write(`
+            <!DOCTYPE html>
+            <html dir="rtl">
+            <head>
+                <title>طباعة تحديد</title>
+                <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+                <style>${getPrintCSS()}</style>
+            </head>
+            <body>
+                ${printContent}
+            </body>
+            </html>
+        `);
+        pw.document.close();
+        pw.focus();
+        setTimeout(() => { pw.print(); pw.close(); }, 500);
+    }).catch(err => {
+        console.error('Error printing selected:', err);
+        showMessage('فشل في طباعة الإيصالات المحددة');
+    });
+}
+
 // User Management
 function loadUsers() {
     const tbody = document.getElementById('users-tbody');
@@ -3820,7 +3792,7 @@ function addUser(e) {
                 role,
                 gender,
                 avatar,
-                permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'backup', 'restore'] : permissions,
+                permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'backup', 'restore'] : permissions,
                 createdAt: new Date().toISOString()
             };
             
@@ -4001,7 +3973,7 @@ function updateUser(e) {
         role,
         gender,
         avatar,
-        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'backup', 'restore'] : permissions,
+        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'backup', 'restore'] : permissions,
         updatedAt: new Date().toISOString()
     };
     
@@ -4439,7 +4411,7 @@ function printReport(results, fromDate, toDate) {
         <html>
         <head>
             <title>تقرير الفترة</title>
-            <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
         </head>
         <body>${html}</body>
         </html>
