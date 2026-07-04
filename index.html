@@ -30,22 +30,28 @@
 </button>
 
 <!-- Digital Clock -->
-<div id="digital-clock" class="digital-clock">
-    <div class="clock-time" id="clock-time">--:--:--</div>
-    <div class="clock-date" id="clock-date">--/--/----</div>
-</div>
 
 <!-- صفحة تسجيل الدخول -->
 <div id="login-page" class="page active">
-        <div class="login-container">
+        <div class="login-layout">
+            <div class="login-side login-right">
+                <div class="login-clock" id="login-clock">
+                    <div class="login-clock-time" id="login-clock-time">--:--</div>
+                    <div class="login-clock-date" id="login-clock-date">--/--/----</div>
+                    <div class="login-hijri-date" id="login-hijri-date"></div>
+                </div>
+            </div>
+            
             <div class="login-box">
                 <div class="logo-section">
                     <div class="main-logo" style="display: flex; gap: 30px; justify-content: center; margin-bottom: 15px;">
                         <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" 
                              alt="شعار الكلية" 
+                             class="logo-animate"
                              style="width: 120px; height: 120px; border-radius: 50%; border: 5px solid #FFD700; box-shadow: 0 0 15px rgba(255,215,0,0.5), 0 0 30px rgba(255,215,0,0.3); object-fit: contain; background: white; padding: 5px;">
                         <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" 
                              alt="شعار الخزينة" 
+                             class="logo-animate logo-animate-delay"
                              style="width: 120px; height: 120px; border-radius: 50%; border: 5px solid #FFD700; box-shadow: 0 0 15px rgba(255,215,0,0.5), 0 0 30px rgba(255,215,0,0.3); object-fit: contain; background: white; padding: 5px;">
                     </div>
                     <div class="institution-name">
@@ -75,6 +81,103 @@
                     </div>
                 </form>
             </div>
+            
+            <div class="login-side login-left">
+                <div class="prayer-times-widget" id="prayer-times-widget">
+                    <div class="prayer-widget-header">
+                        <i class="fas fa-mosque"></i> مواقيت الصلاة
+                        <button class="prayer-settings-btn" onclick="openPrayerSettings()" title="إعدادات المواقيت">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                    <div class="prayer-next" id="prayer-next">
+                        <div class="prayer-next-name" id="prayer-next-name">--</div>
+                        <div class="prayer-countdown" id="prayer-countdown">--:--:--</div>
+                    </div>
+                    <div class="prayer-list" id="prayer-list">
+                        <div class="prayer-item"><span>الفجر</span><span id="prayer-fajr">--:--</span></div>
+                        <div class="prayer-item"><span>الشروق</span><span id="prayer-shuruq">--:--</span></div>
+                        <div class="prayer-item"><span>الظهر</span><span id="prayer-dhuhr">--:--</span></div>
+                        <div class="prayer-item"><span>العصر</span><span id="prayer-asr">--:--</span></div>
+                        <div class="prayer-item"><span>المغرب</span><span id="prayer-maghrib">--:--</span></div>
+                        <div class="prayer-item"><span>العشاء</span><span id="prayer-isha">--:--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال إعدادات الصلاة -->
+    <div id="prayer-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> إعدادات مواقيت الصلاة</h3>
+                <button class="close" onclick="closePrayerSettings()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><i class="fas fa-city"></i> المدينة</label>
+                    <input type="text" id="prayer-city" value="Mansoura" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-globe"></i> الدولة</label>
+                    <input type="text" id="prayer-country" value="Egypt" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-calculator"></i> طريقة الحساب</label>
+                    <select id="prayer-method" class="form-control">
+                        <option value="1">جامعة العلوم الإسلامية - كراتشي</option>
+                        <option value="2">رابطة العالم الإسلامي - مكة</option>
+                        <option value="3">ال_organization الإسلامي أمريكا الشمالية</option>
+                        <option value="4">الOrganization الإسلامي أمريكا الشمالية</option>
+                        <option value="5" selected>هيئة المسح المصرية</option>
+                        <option value="7">الهيئة العامة للمساحة - الكويت</option>
+                        <option value="8">أمريكا الشمالية</option>
+                        <option value="9">المنطقة العربية</option>
+                        <option value="10">جامعة العلوم الإسلامية - جاكرتا</option>
+                        <option value="11">الديانة العثمانية</option>
+                        <option value="12">الرواتب الحرة - ماليزيا</option>
+                        <option value="13">جامعة الأزهر</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-bell"></i> تنبيه قبل الصلاية بـ (دقيقة)</label>
+                    <input type="number" id="prayer-alert-minutes" value="15" min="1" max="60" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="prayer-sound-enabled" checked>
+                        <i class="fas fa-volume-up"></i> تفعيل التنبيه الصوتي
+                    </label>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <label><i class="fas fa-music"></i> الصوت الافتراضي</label>
+                    <button type="button" class="btn btn-small" onclick="playDefaultPrayerAlert()" style="font-size: 12px; width: 100%;">
+                        <i class="fas fa-play"></i> استماع الصوت الافتراضي
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-music"></i> صوت التنبيه المخصص</label>
+                    <input type="file" id="prayer-sound-file" accept="audio/*" class="form-control" style="padding: 8px;">
+                    <small style="color: #666; font-size: 11px; margin-top: 4px; display: block;">اتركه فارغاً لاستخدام الصوت الافتراضي (beam + speech). الصيغ المدعومة: MP3, WAV, OGG (حد أقصى 500KB)</small>
+                    <div id="prayer-sound-preview" style="margin-top: 5px; display: none;">
+                        <button type="button" class="btn btn-small" onclick="previewPrayerSound()" style="font-size: 12px;">
+                            <i class="fas fa-play"></i> استماع معاينة
+                        </button>
+                        <button type="button" class="btn btn-small" onclick="removePrayerSound()" style="font-size: 12px; margin-right: 5px;">
+                            <i class="fas fa-trash"></i> حذف الصوت
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="savePrayerSettingsFromModal()">
+                    <i class="fas fa-save"></i> حفظ وإعادة تحميل
+                </button>
+                <button class="btn btn-secondary" onclick="closePrayerSettings()">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+            </div>
         </div>
     </div>
 
@@ -83,21 +186,57 @@
         <header class="main-header">
             <div class="header-content">
                 <div class="header-logos">
-                    <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="شعار الكلية" class="header-logo-img">
-                    <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" alt="شعار الخزينة" class="header-logo-img">
+                    <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/MLogo.png" alt="شعار الكلية" class="header-logo-img logo-animate">
+                    <img src="https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png" alt="شعار الخزينة" class="header-logo-img logo-animate logo-animate-delay">
                 </div>
                 <h2>مدفوعات الصناديق والمعاشات</h2>
                 <div class="user-info">
+                    <div class="digital-clock" id="digital-clock">
+                        <div class="clock-time" id="clock-time">--:--:--</div>
+                        <div class="clock-date" id="clock-date">--/--/----</div>
+                    </div>
                     <span id="connection-status" class="connection-status connected" title="حالة الاتصال">
                         <i class="fas fa-wifi"></i> <span id="connection-text">متصل</span>
                     </span>
                     <span id="current-user">المستخدم</span>
+                    <button id="prayer-toggle-btn" class="btn btn-small btn-prayer" onclick="togglePrayerPanel()" title="مواقيت الصلاة">
+                        <i class="fas fa-mosque"></i>
+                    </button>
                     <button id="logout-btn" class="btn btn-small">
                         <i class="fas fa-sign-out-alt"></i> خروج
                     </button>
                 </div>
             </div>
         </header>
+
+        <!-- لوحة مواقيت الصلاة بعد تسجيل الدخول -->
+        <div id="prayer-panel" class="prayer-panel" style="display: none;">
+            <div class="prayer-panel-content">
+                <div class="prayer-panel-header">
+                    <i class="fas fa-mosque"></i> مواقيت الصلاة
+                    <button class="prayer-settings-btn" onclick="openPrayerSettings()" title="إعدادات المواقيت">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="prayer-panel-close" onclick="togglePrayerPanel()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="prayer-panel-body">
+                    <div class="prayer-panel-next">
+                        <div class="prayer-next-name" id="prayer-next-name-main">--</div>
+                        <div class="prayer-countdown" id="prayer-countdown-main">--:--:--</div>
+                    </div>
+                    <div class="prayer-panel-list">
+                        <div class="prayer-item"><span>الفجر</span><span id="prayer-fajr-main">--:--</span></div>
+                        <div class="prayer-item"><span>الشروق</span><span id="prayer-shuruq-main">--:--</span></div>
+                        <div class="prayer-item"><span>الظهر</span><span id="prayer-dhuhr-main">--:--</span></div>
+                        <div class="prayer-item"><span>العصر</span><span id="prayer-asr-main">--:--</span></div>
+                        <div class="prayer-item"><span>المغرب</span><span id="prayer-maghrib-main">--:--</span></div>
+                        <div class="prayer-item"><span>العشاء</span><span id="prayer-isha-main">--:--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <nav class="main-nav">
             <button class="nav-btn active" data-page="cash-receipt">

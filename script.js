@@ -135,12 +135,365 @@ function loadTheme() {
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     loadSavedColors();
+    initLoginClock();
+    initPrayerTimes();
     
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         themeToggle.addEventListener('click', toggleTheme);
     }
 });
+
+// ==========================================
+// LOGIN PAGE - CLOCK & PRAYER TIMES
+// ==========================================
+function initLoginClock() {
+    function updateClock() {
+        const now = new Date();
+        const timeEl = document.getElementById('login-clock-time');
+        const dateEl = document.getElementById('login-clock-date');
+        const hijriEl = document.getElementById('login-hijri-date');
+        
+        if (timeEl) {
+            let h = now.getHours();
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const period = h >= 12 ? 'م' : 'ص';
+            h = h > 12 ? h - 12 : h === 0 ? 12 : h;
+            timeEl.textContent = h + ':' + m + ':' + s + ' ' + period;
+        }
+        
+        if (dateEl) {
+            const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            dateEl.textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+        }
+        
+        if (hijriEl) {
+            hijriEl.textContent = getHijriDate(now);
+        }
+    }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+}
+
+function getHijriDate(date) {
+    try {
+        const options = { calendar: 'islamic', day: 'numeric', month: 'long', year: 'numeric' };
+        return date.toLocaleDateString('ar-SA', options);
+    } catch (e) {
+        return '';
+    }
+}
+
+function initPrayerTimes() {
+    const settings = getPrayerSettings();
+    fetchPrayerTimes(settings.city, settings.country, settings.method);
+}
+
+function getPrayerSettings() {
+    const saved = localStorage.getItem('prayerSettings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        if (!settings.hasOwnProperty('customSound')) settings.customSound = null;
+        return settings;
+    }
+    return { city: 'Mansoura', country: 'Egypt', method: 5, alertMinutes: 15, soundEnabled: true, customSound: null };
+}
+
+function savePrayerSettings(settings) {
+    localStorage.setItem('prayerSettings', JSON.stringify(settings));
+    fetchPrayerTimes(settings.city, settings.country, settings.method);
+}
+
+function fetchPrayerTimes(city, country, method) {
+    fetch('https://api.aladhan.com/v1/timingsByCity?city=' + encodeURIComponent(city) + '&country=' + encodeURIComponent(country) + '&method=' + method)
+        .then(r => r.json())
+        .then(data => {
+            if (data.code === 200) {
+                const t = data.data.timings;
+                mainPrayerTimings = t;
+                
+                setPrayerTime('prayer-fajr', t.Fajr);
+                setPrayerTime('prayer-shuruq', t.Sunrise);
+                setPrayerTime('prayer-dhuhr', t.Dhuhr);
+                setPrayerTime('prayer-asr', t.Asr);
+                setPrayerTime('prayer-maghrib', t.Maghrib);
+                setPrayerTime('prayer-isha', t.Isha);
+                
+                syncPrayerTimesToMain(t);
+                startCountdown(t);
+                startPrayerAlert(t);
+            }
+        })
+        .catch(e => {
+            console.log('Prayer times unavailable:', e);
+        });
+}
+
+function setPrayerTime(id, time24) {
+    const el = document.getElementById(id);
+    if (!el || !time24) return;
+    const parts = time24.split(':');
+    let h = parseInt(parts[0]);
+    const m = parts[1];
+    const period = h >= 12 ? 'م' : 'ص';
+    h = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    el.textContent = h + ':' + m + ' ' + period;
+}
+
+function startCountdown(timings) {
+    const prayers = [
+        { name: 'الفجر', time: timings.Fajr },
+        { name: 'الشروق', time: timings.Sunrise },
+        { name: 'الظهر', time: timings.Dhuhr },
+        { name: 'العصر', time: timings.Asr },
+        { name: 'المغرب', time: timings.Maghrib },
+        { name: 'العشاء', time: timings.Isha }
+    ];
+    
+    function update() {
+        const now = new Date();
+        const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        
+        let nextPrayer = null;
+        let nextTimeSec = null;
+        
+        for (const p of prayers) {
+            const parts = p.time.split(':');
+            const pSec = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60;
+            if (pSec > nowSec) {
+                nextPrayer = p;
+                nextTimeSec = pSec;
+                break;
+            }
+        }
+        
+        if (!nextPrayer) {
+            nextPrayer = prayers[0];
+            const parts = prayers[0].time.split(':');
+            nextTimeSec = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + 24 * 3600;
+        }
+        
+        const nameEl = document.getElementById('prayer-next-name');
+        const countdownEl = document.getElementById('prayer-countdown');
+        const nameMainEl = document.getElementById('prayer-next-name-main');
+        const countdownMainEl = document.getElementById('prayer-countdown-main');
+        
+        if (nameEl) nameEl.textContent = nextPrayer.name;
+        if (nameMainEl) nameMainEl.textContent = nextPrayer.name;
+        
+        const diff = nextTimeSec - nowSec;
+        const hours = Math.floor(diff / 3600);
+        const mins = Math.floor((diff % 3600) / 60);
+        const secs = diff % 60;
+        
+        if (countdownEl) {
+            countdownEl.textContent = String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+        }
+        if (countdownMainEl) {
+            countdownMainEl.textContent = String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+        }
+        
+        document.querySelectorAll('.prayer-item').forEach(item => item.classList.remove('active'));
+        const idx = prayers.indexOf(nextPrayer);
+        const items = document.querySelectorAll('.prayer-item');
+        if (items[idx]) items[idx].classList.add('active');
+        const itemsMain = document.querySelectorAll('.prayer-panel-list .prayer-item');
+        if (itemsMain[idx]) itemsMain[idx].classList.add('active');
+    }
+    
+    update();
+    setInterval(update, 1000);
+}
+
+let prayerAlertInterval = null;
+let lastAlertPrayer = '';
+
+function startPrayerAlert(timings) {
+    if (prayerAlertInterval) clearInterval(prayerAlertInterval);
+    
+    const settings = getPrayerSettings();
+    if (!settings.soundEnabled) return;
+    
+    const alertMin = settings.alertMinutes || 15;
+    
+    const prayers = [
+        { name: 'الفجر', time: timings.Fajr },
+        { name: 'الظهر', time: timings.Dhuhr },
+        { name: 'العصر', time: timings.Asr },
+        { name: 'المغرب', time: timings.Maghrib },
+        { name: 'العشاء', time: timings.Isha }
+    ];
+    
+    prayerAlertInterval = setInterval(() => {
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        
+        for (const p of prayers) {
+            const parts = p.time.split(':');
+            const pMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            const diff = pMin - nowMin;
+            
+            if (diff === alertMin && lastAlertPrayer !== p.name) {
+                lastAlertPrayer = p.name;
+                playPrayerAlert(p.name, alertMin);
+            }
+        }
+    }, 30000);
+}
+
+function playPrayerAlert(prayerName, minutes) {
+    try {
+        const settings = getPrayerSettings();
+        
+        if (settings.customSound) {
+            const audio = new Audio(settings.customSound);
+            audio.play().then(() => {
+                setTimeout(() => {
+                    if ('speechSynthesis' in window) {
+                        const msg = new SpeechSynthesisUtterance('اقترب وقت صلاة ' + prayerName);
+                        msg.lang = 'ar-SA';
+                        msg.rate = 1;
+                        msg.volume = 1;
+                        speechSynthesis.speak(msg);
+                    }
+                }, 1500);
+            }).catch(() => {
+                playDefaultPrayerAlert();
+            });
+        } else {
+            playDefaultPrayerAlert();
+        }
+        
+        showMessage('🕌 اقترب وقت صلاة ' + prayerName + ' بعد ' + minutes + ' دقيقة', 'info');
+    } catch(e) {}
+}
+
+function playDefaultPrayerAlert() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playBeep(freq, startTime, duration) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.5, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+        
+        const now = ctx.currentTime;
+        playBeep(800, now, 0.2);
+        playBeep(1000, now + 0.25, 0.2);
+        playBeep(800, now + 0.5, 0.2);
+        
+        setTimeout(() => {
+            if ('speechSynthesis' in window) {
+                const msg = new SpeechSynthesisUtterance('اقترب وقت صلاة');
+                msg.lang = 'ar-SA';
+                msg.rate = 1;
+                msg.volume = 1;
+                speechSynthesis.speak(msg);
+            }
+        }, 800);
+    } catch(e) {}
+}
+
+function openPrayerSettings() {
+    const settings = getPrayerSettings();
+    document.getElementById('prayer-city').value = settings.city;
+    document.getElementById('prayer-country').value = settings.country;
+    document.getElementById('prayer-method').value = settings.method;
+    document.getElementById('prayer-alert-minutes').value = settings.alertMinutes;
+    document.getElementById('prayer-sound-enabled').checked = settings.soundEnabled;
+    
+    const soundPreview = document.getElementById('prayer-sound-preview');
+    if (settings.customSound) {
+        soundPreview.style.display = 'block';
+    } else {
+        soundPreview.style.display = 'none';
+    }
+    document.getElementById('prayer-sound-file').value = '';
+    
+    document.getElementById('prayer-settings-modal').style.display = 'flex';
+}
+
+function closePrayerSettings() {
+    document.getElementById('prayer-settings-modal').style.display = 'none';
+}
+
+function savePrayerSettingsFromModal() {
+    const settings = getPrayerSettings();
+    settings.city = document.getElementById('prayer-city').value.trim();
+    settings.country = document.getElementById('prayer-country').value.trim();
+    settings.method = parseInt(document.getElementById('prayer-method').value);
+    settings.alertMinutes = parseInt(document.getElementById('prayer-alert-minutes').value) || 15;
+    settings.soundEnabled = document.getElementById('prayer-sound-enabled').checked;
+    
+    const soundFile = document.getElementById('prayer-sound-file').files[0];
+    if (soundFile) {
+        if (soundFile.size > 500 * 1024) {
+            showMessage('حجم الملف كبير جداً. الحد الأقصى 500KB', 'error');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            settings.customSound = e.target.result;
+            localStorage.setItem('prayerSettings', JSON.stringify(settings));
+            closePrayerSettings();
+            fetchPrayerTimes(settings.city, settings.country, settings.method);
+        };
+        reader.readAsDataURL(soundFile);
+    } else {
+        localStorage.setItem('prayerSettings', JSON.stringify(settings));
+        closePrayerSettings();
+        fetchPrayerTimes(settings.city, settings.country, settings.method);
+    }
+}
+
+function previewPrayerSound() {
+    const settings = getPrayerSettings();
+    if (settings.customSound) {
+        const audio = new Audio(settings.customSound);
+        audio.play();
+    }
+}
+
+function removePrayerSound() {
+    const settings = getPrayerSettings();
+    settings.customSound = null;
+    localStorage.setItem('prayerSettings', JSON.stringify(settings));
+    document.getElementById('prayer-sound-preview').style.display = 'none';
+    showMessage('تم حذف الصوت المخصص', 'info');
+}
+
+function togglePrayerPanel() {
+    const panel = document.getElementById('prayer-panel');
+    if (panel.style.display === 'none' || !panel.classList.contains('show')) {
+        panel.style.display = 'block';
+        setTimeout(() => panel.classList.add('show'), 10);
+    } else {
+        panel.classList.remove('show');
+        setTimeout(() => panel.style.display = 'none', 400);
+    }
+}
+
+function syncPrayerTimesToMain(t) {
+    setPrayerTime('prayer-fajr-main', t.Fajr);
+    setPrayerTime('prayer-shuruq-main', t.Sunrise);
+    setPrayerTime('prayer-dhuhr-main', t.Dhuhr);
+    setPrayerTime('prayer-asr-main', t.Asr);
+    setPrayerTime('prayer-maghrib-main', t.Maghrib);
+    setPrayerTime('prayer-isha-main', t.Isha);
+}
+
+let mainPrayerTimings = null;
 
 // ==========================================
 // ADVANCED NOTIFICATIONS SYSTEM
@@ -1210,21 +1563,20 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const firebaseInitialized = initFirebase();
         if (!firebaseInitialized) {
-            showMessage('فشل في تهيئة Firebase. تأكد من الإعدادات');
-            return;
+            console.warn('Firebase initialization failed - continuing without Firebase');
         }
-        console.log('Firebase initialized successfully');
+        console.log('Firebase initialized:', firebaseInitialized);
         
         // Internet connection detection
         window.addEventListener('online', () => {
             updateConnectionStatus('syncing');
-            notifications.success('تم استعادة الاتصال بالإنترنت');
+            if (typeof notifications !== 'undefined') notifications.success('تم استعادة الاتصال بالإنترنت');
             setTimeout(() => updateConnectionStatus('connected'), 2000);
         });
         
         window.addEventListener('offline', () => {
             updateConnectionStatus('offline');
-            notifications.warning('انقطع الاتصال بالإنترنت - تعمل في وضع عدم الاتصال');
+            if (typeof notifications !== 'undefined') notifications.warning('انقطع الاتصال بالإنترنت');
         });
         
         // Hide clock initially until login
@@ -1246,9 +1598,11 @@ document.addEventListener('DOMContentLoaded', () => {
         initPagination();
         
         // Initialize Google Drive auto-backup if configured
-        if (GoogleDriveBackup.AUTO_BACKUP && GoogleDriveBackup.CLIENT_ID) {
-            GoogleDriveBackup.setupAutoBackup();
-        }
+        try {
+            if (typeof GoogleDriveBackup !== 'undefined' && GoogleDriveBackup.AUTO_BACKUP && GoogleDriveBackup.CLIENT_ID) {
+                GoogleDriveBackup.setupAutoBackup();
+            }
+        } catch(e) { console.log('GoogleDriveBackup not available'); }
         
         // تحميل أسماء الأشخاص عند فتح صفحة التقرير
         const personReportsPage = document.getElementById('person-reports');
@@ -1301,8 +1655,10 @@ function initDigitalClock() {
             day: '2-digit'
         });
         
-        document.getElementById('clock-time').textContent = timeString;
-        document.getElementById('clock-date').textContent = dateString;
+        const clockTimeEl = document.getElementById('clock-time');
+        const clockDateEl = document.getElementById('clock-date');
+        if (clockTimeEl) clockTimeEl.textContent = timeString;
+        if (clockDateEl) clockDateEl.textContent = dateString;
     }
     
     // Update immediately
@@ -1358,10 +1714,12 @@ function setupRealtimeListeners() {
 // Setup Event Listeners
 function setupEventListeners() {
     // Login Form
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
     
     // Logout - with confirmation
-    document.getElementById('logout-btn').addEventListener('click', function() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) logoutBtn.addEventListener('click', function() {
         showConfirm('هل أنت متأكد من تسجيل الخروج؟', handleLogout);
     });
     
@@ -1371,14 +1729,20 @@ function setupEventListeners() {
     });
     
     // Cash Receipt Form
-    document.getElementById('save-cash-receipt').addEventListener('click', () => saveCashReceipt(false));
-    document.getElementById('print-cash-receipt').addEventListener('click', () => preparePrint('cash'));
-    document.getElementById('goto-database').addEventListener('click', () => navigateTo('database'));
+    const saveCashBtn = document.getElementById('save-cash-receipt');
+    if (saveCashBtn) saveCashBtn.addEventListener('click', () => saveCashReceipt(false));
+    const printCashBtn = document.getElementById('print-cash-receipt');
+    if (printCashBtn) printCashBtn.addEventListener('click', () => preparePrint('cash'));
+    const gotoDbBtn = document.getElementById('goto-database');
+    if (gotoDbBtn) gotoDbBtn.addEventListener('click', () => navigateTo('database'));
     
     // Unjustified Form
-    document.getElementById('save-unjustified').addEventListener('click', () => saveUnjustified(false));
-    document.getElementById('print-unjustified').addEventListener('click', () => preparePrint('unjustified'));
-    document.getElementById('goto-unjustified-db').addEventListener('click', () => navigateTo('unjustified-db'));
+    const saveUnjustifiedBtn = document.getElementById('save-unjustified');
+    if (saveUnjustifiedBtn) saveUnjustifiedBtn.addEventListener('click', () => saveUnjustified(false));
+    const printUnjustifiedBtn = document.getElementById('print-unjustified');
+    if (printUnjustifiedBtn) printUnjustifiedBtn.addEventListener('click', () => preparePrint('unjustified'));
+    const gotoUnjustifiedDbBtn = document.getElementById('goto-unjustified-db');
+    if (gotoUnjustifiedDbBtn) gotoUnjustifiedDbBtn.addEventListener('click', () => navigateTo('unjustified-db'));
     
     // Account Inputs - Auto Calculate Total
     document.querySelectorAll('.account-input').forEach(input => {
@@ -1408,21 +1772,29 @@ function setupEventListeners() {
     }
     
     // Database Search
-    document.getElementById('db-search-btn').addEventListener('click', () => searchDatabase('cash'));
-    document.getElementById('db-search').addEventListener('input', (e) => {
+    const dbSearchBtn = document.getElementById('db-search-btn');
+    if (dbSearchBtn) dbSearchBtn.addEventListener('click', () => searchDatabase('cash'));
+    const dbSearch = document.getElementById('db-search');
+    if (dbSearch) dbSearch.addEventListener('input', (e) => {
         liveSearch('cash', e.target.value);
     });
     
-    document.getElementById('unjustified-search-btn').addEventListener('click', () => searchDatabase('unjustified'));
-    document.getElementById('unjustified-search').addEventListener('input', (e) => {
+    const unjustifiedSearchBtn = document.getElementById('unjustified-search-btn');
+    if (unjustifiedSearchBtn) unjustifiedSearchBtn.addEventListener('click', () => searchDatabase('unjustified'));
+    const unjustifiedSearch = document.getElementById('unjustified-search');
+    if (unjustifiedSearch) unjustifiedSearch.addEventListener('input', (e) => {
         liveSearch('unjustified', e.target.value);
     });
     
     // Date Filter Buttons
-    document.getElementById('db-filter-btn').addEventListener('click', () => filterDatabaseByDate('cash'));
-    document.getElementById('db-reset-filter-btn').addEventListener('click', () => resetDateFilter('cash'));
-    document.getElementById('unjustified-filter-btn').addEventListener('click', () => filterDatabaseByDate('unjustified'));
-    document.getElementById('unjustified-reset-filter-btn').addEventListener('click', () => resetDateFilter('unjustified'));
+    const dbFilterBtn = document.getElementById('db-filter-btn');
+    if (dbFilterBtn) dbFilterBtn.addEventListener('click', () => filterDatabaseByDate('cash'));
+    const dbResetFilterBtn = document.getElementById('db-reset-filter-btn');
+    if (dbResetFilterBtn) dbResetFilterBtn.addEventListener('click', () => resetDateFilter('cash'));
+    const unjustifiedFilterBtn = document.getElementById('unjustified-filter-btn');
+    if (unjustifiedFilterBtn) unjustifiedFilterBtn.addEventListener('click', () => filterDatabaseByDate('unjustified'));
+    const unjustifiedResetFilterBtn = document.getElementById('unjustified-reset-filter-btn');
+    if (unjustifiedResetFilterBtn) unjustifiedResetFilterBtn.addEventListener('click', () => resetDateFilter('unjustified'));
     
     // Set default date-to to today
     const today = new Date().toISOString().split('T')[0];
@@ -1432,25 +1804,31 @@ function setupEventListeners() {
     if (unjustifiedDateTo) unjustifiedDateTo.value = today;
     
     // Database navigation buttons
-    document.getElementById('goto-unjustified-db-btn').addEventListener('click', () => navigateTo('unjustified-db'));
-    document.getElementById('goto-cash-db-btn').addEventListener('click', () => navigateTo('database'));
+    const gotoUnjustifiedDbBtn2 = document.getElementById('goto-unjustified-db-btn');
+    if (gotoUnjustifiedDbBtn2) gotoUnjustifiedDbBtn2.addEventListener('click', () => navigateTo('unjustified-db'));
+    const gotoCashDbBtn = document.getElementById('goto-cash-db-btn');
+    if (gotoCashDbBtn) gotoCashDbBtn.addEventListener('click', () => navigateTo('database'));
     
     // Select All Checkboxes
-    document.getElementById('select-all').addEventListener('change', (e) => {
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) selectAll.addEventListener('change', (e) => {
         document.querySelectorAll('#cash-db-table tbody input[type="checkbox"]').forEach(cb => {
             cb.checked = e.target.checked;
         });
     });
     
-    document.getElementById('select-all-unjustified').addEventListener('change', (e) => {
+    const selectAllUnjustified = document.getElementById('select-all-unjustified');
+    if (selectAllUnjustified) selectAllUnjustified.addEventListener('change', (e) => {
         document.querySelectorAll('#unjustified-db-table tbody input[type="checkbox"]').forEach(cb => {
             cb.checked = e.target.checked;
         });
     });
     
     // Delete Selected
-    document.getElementById('delete-selected').addEventListener('click', () => deleteSelected('cash'));
-    document.getElementById('delete-unjustified-selected').addEventListener('click', () => deleteSelected('unjustified'));
+    const deleteSelectedBtn = document.getElementById('delete-selected');
+    if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', () => deleteSelected('cash'));
+    const deleteUnjustifiedSelectedBtn = document.getElementById('delete-unjustified-selected');
+    if (deleteUnjustifiedSelectedBtn) deleteUnjustifiedSelectedBtn.addEventListener('click', () => deleteSelected('unjustified'));
     
     // Print Selected
     const printSelectedBtn = document.getElementById('print-selected-btn');
@@ -1463,16 +1841,29 @@ function setupEventListeners() {
     }
     
     // Export/Import
-    document.getElementById('export-excel').addEventListener('click', () => exportToExcel('cash'));
-    document.getElementById('import-excel').addEventListener('click', () => document.getElementById('excel-file').click());
-    document.getElementById('excel-file').addEventListener('change', (e) => importFromExcel(e, 'cash'));
+    const exportExcelBtn = document.getElementById('export-excel');
+    if (exportExcelBtn) exportExcelBtn.addEventListener('click', () => exportToExcel('cash'));
+    const importExcelBtn = document.getElementById('import-excel');
+    if (importExcelBtn) importExcelBtn.addEventListener('click', () => {
+        const f = document.getElementById('excel-file');
+        if (f) f.click();
+    });
+    const excelFile = document.getElementById('excel-file');
+    if (excelFile) excelFile.addEventListener('change', (e) => importFromExcel(e, 'cash'));
     
-    document.getElementById('export-unjustified-excel').addEventListener('click', () => exportToExcel('unjustified'));
-    document.getElementById('import-unjustified-excel').addEventListener('click', () => document.getElementById('unjustified-excel-file').click());
-    document.getElementById('unjustified-excel-file').addEventListener('change', (e) => importFromExcel(e, 'unjustified'));
+    const exportUnjustifiedExcelBtn = document.getElementById('export-unjustified-excel');
+    if (exportUnjustifiedExcelBtn) exportUnjustifiedExcelBtn.addEventListener('click', () => exportToExcel('unjustified'));
+    const importUnjustifiedExcelBtn = document.getElementById('import-unjustified-excel');
+    if (importUnjustifiedExcelBtn) importUnjustifiedExcelBtn.addEventListener('click', () => {
+        const f = document.getElementById('unjustified-excel-file');
+        if (f) f.click();
+    });
+    const unjustifiedExcelFile = document.getElementById('unjustified-excel-file');
+    if (unjustifiedExcelFile) unjustifiedExcelFile.addEventListener('change', (e) => importFromExcel(e, 'unjustified'));
     
     // User Management
-    document.getElementById('user-form').addEventListener('submit', function(e) {
+    const userForm = document.getElementById('user-form');
+    if (userForm) userForm.addEventListener('submit', function(e) {
         if (editingUserKey) {
             updateUser(e);
         } else {
@@ -1481,9 +1872,12 @@ function setupEventListeners() {
     });
     
     // Reports
-    document.getElementById('generate-report').addEventListener('click', generateReport);
-    document.getElementById('export-report').addEventListener('click', exportReport);
-    document.getElementById('print-report-btn').addEventListener('click', () => {
+    const generateReportBtn = document.getElementById('generate-report');
+    if (generateReportBtn) generateReportBtn.addEventListener('click', generateReport);
+    const exportReportBtn = document.getElementById('export-report');
+    if (exportReportBtn) exportReportBtn.addEventListener('click', exportReport);
+    const printReportBtn = document.getElementById('print-report-btn');
+    if (printReportBtn) printReportBtn.addEventListener('click', () => {
         const fromDate = document.getElementById('report-from').value;
         const toDate = document.getElementById('report-to').value;
         if (!fromDate || !toDate) {
@@ -1505,11 +1899,14 @@ function setupEventListeners() {
     });
     
     // Confirm Print
-    document.getElementById('confirm-print').addEventListener('click', executePrint);
+    const confirmPrintBtn = document.getElementById('confirm-print');
+    if (confirmPrintBtn) confirmPrintBtn.addEventListener('click', executePrint);
     
     // Confirm Modal
-    document.getElementById('confirm-yes').addEventListener('click', handleConfirmYes);
-    document.getElementById('confirm-no').addEventListener('click', closeAllModals);
+    const confirmYesBtn = document.getElementById('confirm-yes');
+    if (confirmYesBtn) confirmYesBtn.addEventListener('click', handleConfirmYes);
+    const confirmNoBtn = document.getElementById('confirm-no');
+    if (confirmNoBtn) confirmNoBtn.addEventListener('click', closeAllModals);
     
     // Warning when closing page/tab
     window.addEventListener('beforeunload', function(e) {
@@ -1877,6 +2274,13 @@ function showMainPage() {
     // Show clock after login
     const clock = document.getElementById('digital-clock');
     if (clock) clock.classList.remove('hidden');
+    
+    // مزامنة مواقيت الصلاة للوحة الرئيسية
+    if (mainPrayerTimings) {
+        syncPrayerTimesToMain(mainPrayerTimings);
+    } else {
+        initPrayerTimes();
+    }
     
     // Show admin-only elements
     if (currentUser.role === 'admin') {
