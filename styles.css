@@ -1820,16 +1820,54 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
+#confirm-modal .modal-content {
+    max-width: 420px;
+    border-radius: 16px;
+}
+
+#confirm-modal .modal-header {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    padding: 14px 20px;
+    border-radius: 16px 16px 0 0;
+}
+
+#confirm-modal .modal-header h3 {
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#confirm-modal .modal-header h3::before {
+    content: "⚠️";
+    font-size: 18px;
+}
+
+#confirm-modal .modal-body {
+    padding: 24px 20px;
+    text-align: center;
+}
+
+#confirm-modal .modal-body p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+}
+
 #confirm-modal .modal-footer {
     justify-content: center;
-    gap: 20px;
+    gap: 12px;
+    padding: 0 20px 20px;
 }
 
 #confirm-modal .modal-footer .btn {
-    min-width: 130px;
-    padding: 14px 28px;
-    font-size: 17px;
+    min-width: 100px;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 8px;
     color: #ffffff !important;
+    transition: all 0.2s ease;
 }
 
 #confirm-yes {
@@ -1838,6 +1876,12 @@ body {
 
 #confirm-no {
     background: linear-gradient(135deg, #7f8c8d, #95a5a6) !important;
+}
+
+#confirm-yes:hover,
+#confirm-no:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
 }
 
 /* Changes Summary Modal Styles */

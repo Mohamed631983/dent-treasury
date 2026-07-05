@@ -310,12 +310,18 @@ function startCountdown(timings) {
 
 let prayerAlertInterval = null;
 let lastAlertPrayer = '';
+let lastAlertDate = '';
 
 function startPrayerAlert(timings) {
     if (prayerAlertInterval) clearInterval(prayerAlertInterval);
     
     const settings = getPrayerSettings();
     if (!settings.soundEnabled) return;
+    
+    // طلب إذن الإشعارات
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
     
     const alertMin = settings.alertMinutes || 15;
     
@@ -327,26 +333,64 @@ function startPrayerAlert(timings) {
         { name: 'العشاء', time: timings.Isha }
     ];
     
+    // فحص كل 30 ثانية
     prayerAlertInterval = setInterval(() => {
-        const now = new Date();
-        const nowMin = now.getHours() * 60 + now.getMinutes();
-        
-        for (const p of prayers) {
-            const parts = p.time.split(':');
-            const pMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-            const diff = pMin - nowMin;
-            
-            if (diff === alertMin && lastAlertPrayer !== p.name) {
-                lastAlertPrayer = p.name;
-                playPrayerAlert(p.name, alertMin);
-            }
-        }
+        checkPrayerTime(prayers, alertMin);
     }, 30000);
+    
+    // فحص أول مرة فوراً
+    checkPrayerTime(prayers, alertMin);
+    
+    // فحص عند العودة للصفحة
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            checkPrayerTime(prayers, alertMin);
+        }
+    });
+}
+
+function checkPrayerTime(prayers, alertMin) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const todayStr = now.toDateString();
+    
+    for (const p of prayers) {
+        const parts = p.time.split(':');
+        const pMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        const diff = pMin - nowMin;
+        
+        if (diff === alertMin && lastAlertPrayer !== p.name + todayStr) {
+            lastAlertPrayer = p.name + todayStr;
+            lastAlertDate = todayStr;
+            playPrayerAlert(p.name, alertMin);
+        }
+    }
+}
+
+function showBrowserNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            const n = new Notification(title, {
+                body: body,
+                icon: 'https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png',
+                badge: 'https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/TLogo.png',
+                tag: 'prayer-alert',
+                requireInteraction: true
+            });
+            n.onclick = function() {
+                window.focus();
+                n.close();
+            };
+        } catch(e) {}
+    }
 }
 
 function playPrayerAlert(prayerName, minutes) {
     try {
         const settings = getPrayerSettings();
+        
+        // إشعار متصفح (يشتغل حتى لو الصفحة في تاب تاني)
+        showBrowserNotification('🕌 اقترب وقت صلاة ' + prayerName, 'بعد ' + minutes + ' دقيقة');
         
         if (settings.customSound) {
             const audio = new Audio(settings.customSound);
