@@ -578,6 +578,9 @@
                             <button class="btn btn-primary btn-animated" id="print-selected-btn" style="display:none;">
                                 <i class="fas fa-print"></i> طباعة تحديد
                             </button>
+                            <button class="btn btn-warning btn-animated" id="edit-selected-btn" style="display:none;">
+                                <i class="fas fa-edit"></i> تعديل على المحدد
+                            </button>
                             <button class="btn btn-danger btn-animated admin-only" id="delete-selected" style="display:none;">
                                 <i class="fas fa-trash"></i> حذف المحدد
                             </button>
@@ -662,6 +665,9 @@
                             </button>
                             <button class="btn btn-primary btn-animated" id="print-unjustified-selected-btn" style="display:none;">
                                 <i class="fas fa-print"></i> طباعة تحديد
+                            </button>
+                            <button class="btn btn-warning btn-animated" id="edit-unjustified-selected-btn" style="display:none;">
+                                <i class="fas fa-edit"></i> تعديل على المحدد
                             </button>
                             <button class="btn btn-danger btn-animated admin-only" id="delete-unjustified-selected" style="display:none;">
                                 <i class="fas fa-trash"></i> حذف المحدد
@@ -761,6 +767,7 @@
                                     <label><input type="checkbox" class="perm-checkbox" value="export"> تصدير Excel</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="print"> طباعة</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="print_selected"> طباعة تحديد</label>
+                                    <label><input type="checkbox" class="perm-checkbox" value="edit_selected"> تعديل جماعي</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="backup"> نسخ احتياطي</label>
                                     <label><input type="checkbox" class="perm-checkbox" value="restore"> استعادة</label>
                                 </div>
@@ -986,8 +993,73 @@
         </div>
     </div>
 
+    <!-- نافذة التعديل الجماعي -->
+    <div id="batch-edit-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+                <h3><i class="fas fa-edit"></i> تعديل على المحدد (<span id="batch-edit-count">0</span> سجل)</h3>
+                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="batch-edit-field" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">الاسم:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-name-check" class="batch-edit-check">
+                        <input type="text" id="batch-edit-name" placeholder="الاسم الجديد" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="batch-edit-field" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">تاريخ الدفع:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-date-check" class="batch-edit-check">
+                        <input type="date" id="batch-edit-date" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="batch-edit-field" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">الفترة من:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-period-from-check" class="batch-edit-check">
+                        <input type="date" id="batch-edit-period-from" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="batch-edit-field" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">الفترة إلى:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-period-to-check" class="batch-edit-check">
+                        <input type="date" id="batch-edit-period-to" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="batch-edit-field" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">رقم الإيصال/الإشعار:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-receipt-no-check" class="batch-edit-check">
+                        <input type="text" id="batch-edit-receipt-no" placeholder="رقم الإيصال" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="batch-edit-field" id="batch-edit-purpose-field" style="display:none; margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">بيان الصرف:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-purpose-check" class="batch-edit-check">
+                        <input type="text" id="batch-edit-purpose" placeholder="بيان الصرف" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="batch-edit-field" id="batch-edit-amount-field" style="display:none; margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">المبلغ:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" id="batch-edit-amount-check" class="batch-edit-check">
+                        <input type="number" id="batch-edit-amount" placeholder="المبلغ" style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" id="batch-edit-save"><i class="fas fa-save"></i> حفظ التغييرات</button>
+                <button class="btn btn-secondary" onclick="closeAllModals()"><i class="fas fa-times"></i> إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="script.js?v=40"></script>
+    <script src="script.js?v=44"></script>
     <script>
         // Set default dates immediately when page loads
         document.addEventListener('DOMContentLoaded', function() {

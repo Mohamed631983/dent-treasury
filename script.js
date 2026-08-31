@@ -1884,6 +1884,28 @@ function setupEventListeners() {
         printUnjustifiedSelectedBtn.addEventListener('click', printSelectedReceipts);
     }
     
+    // Edit Selected
+    const editSelectedBtn = document.getElementById('edit-selected-btn');
+    if (editSelectedBtn) editSelectedBtn.addEventListener('click', () => editSelected('cash'));
+    const editUnjustifiedSelectedBtn = document.getElementById('edit-unjustified-selected-btn');
+    if (editUnjustifiedSelectedBtn) editUnjustifiedSelectedBtn.addEventListener('click', () => editSelected('unjustified'));
+    
+    // Batch Edit Save
+    const batchEditSaveBtn = document.getElementById('batch-edit-save');
+    if (batchEditSaveBtn) batchEditSaveBtn.addEventListener('click', saveBatchEdit);
+    
+    // Batch Edit checkbox toggles
+    document.querySelectorAll('.batch-edit-check').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const input = this.closest('.batch-edit-field').querySelector('input:not(.batch-edit-check)');
+            if (input) {
+                input.disabled = !this.checked;
+                input.style.opacity = this.checked ? '1' : '0.5';
+                if (this.checked) input.focus();
+            }
+        });
+    });
+    
     // Export/Import
     const exportExcelBtn = document.getElementById('export-excel');
     if (exportExcelBtn) exportExcelBtn.addEventListener('click', () => exportToExcel('cash'));
@@ -2128,7 +2150,7 @@ function createDefaultAdminIfNeeded() {
                         role: 'admin',
                     gender: 'male',
                     avatar: 'male1',
-                    permissions: ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'add'],
+                    permissions: ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'edit_selected', 'add'],
                     createdAt: new Date().toISOString()
                 };
                 
@@ -2198,6 +2220,11 @@ function updateButtonsByPermissions() {
         printSelectedBtn.style.display = (isAdmin || perms.includes('print_selected')) ? '' : 'none';
     }
 
+    const editSelectedBtn = document.getElementById('edit-selected-btn');
+    if (editSelectedBtn) {
+        editSelectedBtn.style.display = (isAdmin || perms.includes('edit_selected')) ? '' : 'none';
+    }
+
     // Add permission controls for data entry (receipts)
     const addCashBtn = document.getElementById('save-cash-receipt');
     if (addCashBtn) {
@@ -2234,6 +2261,11 @@ function updateButtonsByPermissions() {
     const printUnjustSelectedBtn = document.getElementById('print-unjustified-selected-btn');
     if (printUnjustSelectedBtn) {
         printUnjustSelectedBtn.style.display = (isAdmin || perms.includes('print_selected')) ? '' : 'none';
+    }
+
+    const editUnjustSelectedBtn = document.getElementById('edit-unjustified-selected-btn');
+    if (editUnjustSelectedBtn) {
+        editUnjustSelectedBtn.style.display = (isAdmin || perms.includes('edit_selected')) ? '' : 'none';
     }
     
     // ===== إخفاء أزرار النسخ الاحتياطي والاستعادة في صفحة مبالغ بدون وجه حق =====
@@ -3925,6 +3957,166 @@ function deleteSelected(type) {
     });
 }
 
+// Batch Edit Selected Receipts
+let batchEditType = null;
+
+function editSelected(type) {
+    console.log('editSelected called, type:', type);
+    console.log('hasPermission result:', hasPermission('edit_selected'));
+    if (!hasPermission('edit_selected')) {
+        showMessage('ليس لديك صلاحية التعديل الجماعي');
+        return;
+    }
+    
+    const checkboxes = type === 'cash'
+        ? document.querySelectorAll('#cash-db-table tbody input[type="checkbox"]:checked')
+        : document.querySelectorAll('#unjustified-db-table tbody input[type="checkbox"]:checked');
+    
+    if (checkboxes.length === 0) {
+        showMessage('الرجاء اختيار سجل واحد على الأقل');
+        return;
+    }
+    
+    batchEditType = type;
+    document.getElementById('batch-edit-count').textContent = checkboxes.length;
+    
+    // Show/hide type-specific fields
+    const purposeField = document.getElementById('batch-edit-purpose-field');
+    const amountField = document.getElementById('batch-edit-amount-field');
+    if (type === 'unjustified') {
+        purposeField.style.display = '';
+        amountField.style.display = '';
+    } else {
+        purposeField.style.display = 'none';
+        amountField.style.display = 'none';
+    }
+    
+    // Reset all checkboxes and inputs
+    document.querySelectorAll('.batch-edit-check').forEach(cb => {
+        cb.checked = false;
+        const input = cb.closest('.batch-edit-field').querySelector('input:not(.batch-edit-check)');
+        if (input) { input.disabled = true; input.style.opacity = '0.5'; }
+    });
+    document.getElementById('batch-edit-name').value = '';
+    document.getElementById('batch-edit-date').value = '';
+    document.getElementById('batch-edit-period-from').value = '';
+    document.getElementById('batch-edit-period-to').value = '';
+    document.getElementById('batch-edit-receipt-no').value = '';
+    document.getElementById('batch-edit-purpose').value = '';
+    document.getElementById('batch-edit-amount').value = '';
+    
+    document.getElementById('batch-edit-modal').classList.add('active');
+}
+
+function saveBatchEdit() {
+    console.log('saveBatchEdit called, batchEditType:', batchEditType);
+    
+    const checkboxes = batchEditType === 'cash'
+        ? document.querySelectorAll('#cash-db-table tbody input[type="checkbox"]:checked')
+        : document.querySelectorAll('#unjustified-db-table tbody input[type="checkbox"]:checked');
+    
+    const ids = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+    const path = batchEditType === 'cash' ? 'cash_receipts' : 'unjustified_payments';
+    
+    console.log('Selected IDs:', ids, 'Path:', path);
+    
+    if (ids.length === 0) {
+        showMessage('الرجاء تحديد سجلات أولاً');
+        return;
+    }
+    
+    const updates = {};
+    if (document.getElementById('batch-edit-name-check').checked) {
+        const val = document.getElementById('batch-edit-name').value.trim();
+        if (!val) { showMessage('الرجاء إدخال الاسم'); return; }
+        if (batchEditType === 'cash') updates.payerName = val;
+        else updates.name = val;
+    }
+    if (document.getElementById('batch-edit-date-check').checked) {
+        const val = document.getElementById('batch-edit-date').value;
+        if (!val) { showMessage('الرجاء إدخال تاريخ الدفع'); return; }
+        updates.paymentDate = convertFromDateInputFormat(val);
+    }
+    if (document.getElementById('batch-edit-period-from-check').checked) {
+        const val = document.getElementById('batch-edit-period-from').value;
+        if (!val) { showMessage('الرجاء إدخال الفترة من'); return; }
+        updates.periodFrom = convertFromDateInputFormat(val);
+    }
+    if (document.getElementById('batch-edit-period-to-check').checked) {
+        const val = document.getElementById('batch-edit-period-to').value;
+        if (!val) { showMessage('الرجاء إدخال الفترة إلى'); return; }
+        updates.periodTo = convertFromDateInputFormat(val);
+    }
+    if (document.getElementById('batch-edit-receipt-no-check').checked) {
+        const val = document.getElementById('batch-edit-receipt-no').value.trim();
+        if (!val) { showMessage('الرجاء إدخال رقم الإيصال'); return; }
+        updates.receiptNo = val;
+    }
+    if (batchEditType === 'unjustified') {
+        if (document.getElementById('batch-edit-purpose-check').checked) {
+            const val = document.getElementById('batch-edit-purpose').value.trim();
+            if (!val) { showMessage('الرجاء إدخال بيان الصرف'); return; }
+            updates.purpose = val;
+        }
+        if (document.getElementById('batch-edit-amount-check').checked) {
+            const val = parseFloat(document.getElementById('batch-edit-amount').value);
+            if (isNaN(val) || val < 0) { showMessage('الرجاء إدخال مبلغ صحيح'); return; }
+            updates.amount = val;
+        }
+    }
+    
+    if (Object.keys(updates).length === 0) {
+        showMessage('الرجاء تحديد حقل واحد على الأقل للتعديل');
+        return;
+    }
+    
+    updates.updatedAt = new Date().toISOString();
+    updates.updatedBy = currentUser ? (currentUser.displayName || currentUser.username) : '';
+    
+    const savedIds = [...ids];
+    const savedUpdates = {...updates};
+    
+    waitForFirebaseAuth(() => {
+        const ref = database.ref(path);
+        
+        ref.once('value')
+            .then((snapshot) => {
+                const data = snapshot.val();
+                const keysToUpdate = [];
+                
+                if (data) {
+                    Object.keys(data).forEach((key) => {
+                        if (savedIds.includes(data[key].id)) {
+                            keysToUpdate.push(key);
+                        }
+                    });
+                }
+                
+                if (keysToUpdate.length === 0) {
+                    showMessage('لم يتم العثور على السجلات المحددة');
+                    return;
+                }
+                
+                const updatePromises = keysToUpdate.map(key => {
+                    return database.ref(path + '/' + key).update(savedUpdates);
+                });
+                return Promise.all(updatePromises);
+            })
+            .then((result) => {
+                if (result) {
+                    closeAllModals();
+                    loadDatabase(batchEditType);
+                    showMessage(`تم تعديل ${savedIds.length} سجل بنجاح`);
+                    logAudit('edit', `تعديل جماعي: تم تعديل ${savedIds.length} سجل (${batchEditType === 'cash' ? 'إيصال نقدي' : 'مبلغ بدون وجه حق'})`);
+                }
+            })
+            .catch((error) => {
+                console.error('Error batch editing:', error);
+                showMessage('حدث خطأ في التعديل: ' + error.message);
+            });
+    });
+}
+
 // Print Functions
 function preparePrint(type) {
     if (!hasPermission('print')) {
@@ -4611,7 +4803,7 @@ function addUser(e) {
                 role,
                 gender,
                 avatar,
-                permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'backup', 'restore'] : permissions,
+                permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'edit_selected', 'backup', 'restore'] : permissions,
                 createdAt: new Date().toISOString()
             };
             
@@ -4792,7 +4984,7 @@ function updateUser(e) {
         role,
         gender,
         avatar,
-        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'backup', 'restore'] : permissions,
+        permissions: role === 'admin' ? ['edit', 'delete', 'import', 'export', 'print', 'print_selected', 'edit_selected', 'backup', 'restore'] : permissions,
         updatedAt: new Date().toISOString()
     };
     

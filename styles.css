@@ -1884,6 +1884,67 @@ body {
     box-shadow: 0 3px 8px rgba(0,0,0,0.2);
 }
 
+/* Batch Edit Modal Styles */
+#batch-edit-modal .modal-content {
+    border-radius: 16px;
+}
+
+#batch-edit-modal .modal-header {
+    padding: 14px 20px;
+    border-radius: 16px 16px 0 0;
+}
+
+#batch-edit-modal .modal-header h3 {
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#batch-edit-modal .modal-body {
+    padding: 20px;
+}
+
+.batch-edit-field label {
+    color: #333;
+    font-size: 13px;
+}
+
+.batch-edit-field input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #f39c12;
+}
+
+.batch-edit-field input[type="text"],
+.batch-edit-field input[type="date"],
+.batch-edit-field input[type="number"] {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    transition: border-color 0.2s;
+}
+
+.batch-edit-field input[type="text"]:focus,
+.batch-edit-field input[type="date"]:focus,
+.batch-edit-field input[type="number"]:focus {
+    border-color: #f39c12;
+    outline: none;
+}
+
+#batch-edit-modal .modal-footer {
+    justify-content: center;
+    gap: 12px;
+    padding: 0 20px 20px;
+}
+
+#batch-edit-modal .modal-footer .btn {
+    min-width: 120px;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
 /* Changes Summary Modal Styles */
 .changes-summary-modal {
     max-width: 700px;
