@@ -334,11 +334,24 @@
                     <div class="charts-row">
                         <div class="chart-card">
                             <h3><i class="fas fa-chart-pie"></i> توزيع الإيصالات حسب الشهر</h3>
-                            <canvas id="monthly-chart" width="400" height="300"></canvas>
+                            <div class="donut-chart-wrapper">
+                                <canvas id="monthly-chart"></canvas>
+                                <div id="monthly-chart-legend" class="donut-legend"></div>
+                            </div>
                         </div>
                         <div class="chart-card">
-                            <h3><i class="fas fa-chart-line"></i> المبالغ المحصلة خلال آخر 12 شهر</h3>
-                            <canvas id="amount-chart" width="400" height="300"></canvas>
+                            <h3><i class="fas fa-chart-pie"></i> توزيع الحسابات</h3>
+                            <div class="donut-chart-wrapper">
+                                <canvas id="amount-chart"></canvas>
+                                <div id="amount-chart-legend" class="donut-legend"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-row">
+                        <div class="chart-card full-width">
+                            <h3><i class="fas fa-chart-bar"></i> ملخص الحسابات</h3>
+                            <div class="accounts-summary" id="dashboard-accounts-summary"></div>
                         </div>
                     </div>
                     
@@ -350,13 +363,6 @@
                         <div class="chart-card">
                             <h3><i class="fas fa-list"></i> آخر الصرف بدون وجه حق</h3>
                             <div id="dashboard-recent-unjustified" class="recent-list"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="charts-row">
-                        <div class="chart-card full-width">
-                            <h3><i class="fas fa-chart-bar"></i> ملخص الحسابات</h3>
-                            <div class="accounts-summary" id="dashboard-accounts-summary"></div>
                         </div>
                     </div>
                 </div>
@@ -1059,7 +1065,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="script.js?v=44"></script>
+    <script src="script.js?v=47"></script>
     <script>
         // Set default dates immediately when page loads
         document.addEventListener('DOMContentLoaded', function() {

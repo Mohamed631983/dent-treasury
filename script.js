@@ -2527,6 +2527,9 @@ function updateDashboardReceipts(receipts) {
     // Monthly chart
     drawMonthlyChart(monthlyData);
     
+    // Accounts chart (donut)
+    drawAmountChartFromTotals(accountTotals);
+    
     // Accounts summary
     renderAccountsSummary(accountTotals);
 }
@@ -2550,142 +2553,197 @@ function updateDashboardUnjustified(payments) {
         </div>`
     ).join('');
     document.getElementById('dashboard-recent-unjustified').innerHTML = recentHtml || '<p style="text-align:center;color:#999;">لا توجد سجلات</p>';
-    
-    // Amount chart
-    drawAmountChart(payments);
 }
 
 function drawMonthlyChart(data) {
     const canvas = document.getElementById('monthly-chart');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
     
     const labels = Object.keys(data);
     const values = Object.values(data);
+    const legendEl = document.getElementById('monthly-chart-legend');
+    
     if (labels.length === 0) {
+        const ctx = canvas.getContext('2d');
+        canvas.width = 200; canvas.height = 200;
         ctx.fillStyle = '#999';
         ctx.font = '14px Tajawal';
         ctx.textAlign = 'center';
-        ctx.fillText('لا توجد بيانات', W/2, H/2);
+        ctx.fillText('لا توجد بيانات', 100, 100);
+        if (legendEl) legendEl.innerHTML = '';
         return;
     }
     
-    const maxVal = Math.max(...values) || 1;
-    const barWidth = Math.min(50, (W - 80) / labels.length - 10);
-    const chartHeight = H - 80;
-    const colors = ['#1565c0','#1976d2','#42a5f5','#2e7d32','#388e3c','#66bb6a','#e65100','#f57c00','#ff9800','#c62828','#d32f2f','#ef5350'];
+    const colors = [
+        ['#667eea','#764ba2'], ['#f093fb','#f5576c'], ['#4facfe','#00f2fe'],
+        ['#43e97b','#38f9d7'], ['#fa709a','#fee140'], ['#a18cd1','#fbc2eb'],
+        ['#fccb90','#d57eeb'], ['#e0c3fc','#8ec5fc'], ['#f5576c','#ff6a88'],
+        ['#ffecd2','#fcb69f'], ['#a1c4fd','#c2e9fb'], ['#d4fc79','#96e6a1']
+    ];
     
-    // Draw bars
-    labels.forEach((label, i) => {
-        const x = 60 + i * (barWidth + 10);
-        const barHeight = (values[i] / maxVal) * chartHeight;
-        const y = H - 40 - barHeight;
-        
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.beginPath();
-        ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
-        ctx.fill();
-        
-        // Value on top
-        ctx.fillStyle = '#333';
-        ctx.font = '10px Tajawal';
-        ctx.textAlign = 'center';
-        ctx.fillText(formatShortNumber(values[i]), x + barWidth/2, y - 5);
-        
-        // Label below
-        ctx.fillStyle = '#666';
-        ctx.font = '9px Tajawal';
-        ctx.save();
-        ctx.translate(x + barWidth/2, H - 20);
-        ctx.rotate(-0.5);
-        ctx.fillText(label.substring(0, 5), 0, 0);
-        ctx.restore();
-    });
+    drawDonutChart(canvas, labels, values, colors, legendEl);
 }
 
 function drawAmountChart(payments) {
     const canvas = document.getElementById('amount-chart');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
     
-    const monthlyData = {};
-    const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    const accountLabels = {
+        'estabd': 'استبعاد',
+        'aht': 'ا.ه.ت',
+        'sandog_tamen': 'صندوق التأمين',
+        'wheda_markabat': 'وحدة مركبات',
+        'nogaba': 'نقابة العاملين',
+        'tamenat': 'التأمينات'
+    };
     
+    const accountTotals = {};
     payments.forEach(p => {
-        if (p.paymentDate) {
-            const parts = p.paymentDate.split('/');
-            if (parts.length >= 2) {
-                const monthIdx = parseInt(parts[1]) - 1;
-                const key = months[monthIdx] || 'غير معروف';
-                monthlyData[key] = (monthlyData[key] || 0) + (parseFloat(p.amount) || 0);
-            }
+        if (p.accounts) {
+            Object.entries(p.accounts).forEach(([key, val]) => {
+                if (val && parseFloat(val) > 0) {
+                    accountTotals[key] = (accountTotals[key] || 0) + parseFloat(val);
+                }
+            });
         }
     });
     
-    const labels = Object.keys(monthlyData);
-    const values = Object.values(monthlyData);
+    drawAmountChartFromTotals(accountTotals);
+}
+
+function drawAmountChartFromTotals(accountTotals) {
+    const canvas = document.getElementById('amount-chart');
+    if (!canvas) return;
+    
+    const accountLabels = {
+        'estabd': 'استبعاد',
+        'aht': 'ا.ه.ت',
+        'sandog_tamen': 'صندوق التأمين',
+        'wheda_markabat': 'وحدة مركبات',
+        'nogaba': 'نقابة العاملين',
+        'tamenat': 'التأمينات'
+    };
+    
+    const labels = Object.keys(accountTotals).map(k => accountLabels[k] || k);
+    const values = Object.values(accountTotals);
+    const legendEl = document.getElementById('amount-chart-legend');
     
     if (labels.length === 0) {
+        const ctx = canvas.getContext('2d');
+        canvas.width = 200; canvas.height = 200;
         ctx.fillStyle = '#999';
         ctx.font = '14px Tajawal';
         ctx.textAlign = 'center';
-        ctx.fillText('لا توجد بيانات', W/2, H/2);
+        ctx.fillText('لا توجد حسابات', 100, 100);
+        if (legendEl) legendEl.innerHTML = '';
         return;
     }
     
-    const maxVal = Math.max(...values) || 1;
-    const chartHeight = H - 80;
-    const stepX = (W - 80) / (labels.length - 1 || 1);
+    const colors = [
+        ['#f5576c','#ff6a88'], ['#667eea','#764ba2'], ['#43e97b','#38f9d7'],
+        ['#fa709a','#fee140'], ['#4facfe','#00f2fe'], ['#fccb90','#d57eeb']
+    ];
     
-    // Draw grid lines
-    ctx.strokeStyle = '#eee';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-        const y = 40 + (chartHeight / 4) * i;
+    drawDonutChart(canvas, labels, values, colors, legendEl);
+}
+
+function drawDonutChart(canvas, labels, values, colorPairs, legendEl) {
+    const dpr = window.devicePixelRatio || 1;
+    const size = 220;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    
+    const cx = size / 2;
+    const cy = size / 2;
+    const outerR = 90;
+    const innerR = 55;
+    const total = values.reduce((a, b) => a + b, 0);
+    
+    if (total === 0) return;
+    
+    // Animation
+    let animProgress = 0;
+    const animDuration = 800;
+    const startTime = performance.now();
+    
+    function animate(now) {
+        const elapsed = now - startTime;
+        animProgress = Math.min(elapsed / animDuration, 1);
+        const ease = 1 - Math.pow(1 - animProgress, 3);
+        
+        ctx.clearRect(0, 0, size, size);
+        
+        let startAngle = -Math.PI / 2;
+        
+        values.forEach((val, i) => {
+            const sliceAngle = (val / total) * Math.PI * 2 * ease;
+            const endAngle = startAngle + sliceAngle;
+            
+            const grad = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR);
+            grad.addColorStop(0, colorPairs[i % colorPairs.length][0]);
+            grad.addColorStop(1, colorPairs[i % colorPairs.length][1]);
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, outerR, startAngle, endAngle);
+            ctx.arc(cx, cy, innerR, endAngle, startAngle, true);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+            
+            // Gap between slices
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            startAngle = endAngle;
+        });
+        
+        // Center circle with shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.1)';
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.moveTo(50, y);
-        ctx.lineTo(W - 20, y);
-        ctx.stroke();
+        ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+        
+        // Center text
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 18px Tajawal';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(formatShortNumber(total), cx, cy - 8);
+        ctx.fillStyle = '#999';
+        ctx.font = '11px Tajawal';
+        ctx.fillText('الإجمالي', cx, cy + 12);
+        
+        if (animProgress < 1) {
+            requestAnimationFrame(animate);
+        }
     }
     
-    // Draw line
-    ctx.strokeStyle = '#c62828';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    labels.forEach((label, i) => {
-        const x = 60 + i * stepX;
-        const y = 40 + chartHeight - (values[i] / maxVal) * chartHeight;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    requestAnimationFrame(animate);
     
-    // Draw points
-    labels.forEach((label, i) => {
-        const x = 60 + i * stepX;
-        const y = 40 + chartHeight - (values[i] / maxVal) * chartHeight;
-        
-        ctx.fillStyle = '#c62828';
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        ctx.fillStyle = '#666';
-        ctx.font = '9px Tajawal';
-        ctx.textAlign = 'center';
-        ctx.save();
-        ctx.translate(x, H - 20);
-        ctx.rotate(-0.5);
-        ctx.fillText(label.substring(0, 5), 0, 0);
-        ctx.restore();
-    });
+    // Build legend
+    if (legendEl) {
+        let legendHtml = '<div class="donut-legend-items">';
+        values.forEach((val, i) => {
+            const pct = ((val / total) * 100).toFixed(1);
+            legendHtml += `<div class="legend-item">
+                <span class="legend-dot" style="background:linear-gradient(135deg,${colorPairs[i % colorPairs.length][0]},${colorPairs[i % colorPairs.length][1]})"></span>
+                <span class="legend-label">${labels[i]}</span>
+                <span class="legend-value">${formatShortNumber(val)} (${pct}%)</span>
+            </div>`;
+        });
+        legendHtml += '</div>';
+        legendEl.innerHTML = legendHtml;
+    }
 }
 
 function renderAccountsSummary(accountTotals) {
