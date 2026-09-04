@@ -704,7 +704,7 @@ class Pagination {
 
     setItemsPerPage(count) {
         this.itemsPerPage = count;
-        this.currentPage = Math.min(this.currentPage, this.getTotalPages() || 1);
+        this.currentPage = 1;
         this.render();
         this.onPageChange(this.currentPage);
     }
@@ -734,10 +734,9 @@ class Pagination {
                     <label>عرض:</label>
                     <select onchange="${this.instanceName}.setItemsPerPage(parseInt(this.value))">
                         ${this.itemsPerPageOptions.map(opt => 
-                            `<option value="${opt}" ${opt === this.itemsPerPage ? 'selected' : ''}>${opt}</option>`
+                            `<option value="${opt}" ${opt === this.itemsPerPage ? 'selected' : ''}>${opt} عنصر</option>`
                         ).join('')}
                     </select>
-                    <span>صفحة</span>
                 </div>
                 <div class="pagination-info">
                     <span>صفحة ${this.currentPage} من ${totalPages}</span>
