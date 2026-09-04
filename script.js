@@ -867,7 +867,7 @@ function renderCashDatabasePage(receipts) {
         
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>
+            <td data-label="إجراء">
                 <div class="action-btns">
                     <button class="action-btn print" onclick="printReceipt(${receipt.id}, 'cash')">
                         <i class="fas fa-print"></i>
@@ -882,21 +882,21 @@ function renderCashDatabasePage(receipts) {
                     </button>` : ''}
                 </div>
             </td>
-            <td><input type="checkbox" class="receipt-select" data-id="${receipt.id}" data-type="cash"></td>
-            <td>${baseIndex + index + 1}</td>
-            <td>${receipt.receiptNo}</td>
-            <td>${receipt.payerName}</td>
-            <td>${formatDate(receipt.paymentDate)}</td>
-            <td>${formatDate(receipt.periodFrom)}</td>
-            <td>${formatDate(receipt.periodTo)}</td>
-            <td>${receipt.accounts['estabd'] || 0}</td>
-            <td>${receipt.accounts['aht'] || 0}</td>
-            <td>${receipt.accounts['sandog_tamen'] || 0}</td>
-            <td>${receipt.accounts['wheda_markabat'] || 0}</td>
-            <td>${receipt.accounts['nogaba'] || 0}</td>
-            <td>${receipt.accounts['tamenat'] || 0}</td>
-            <td><strong>${receipt.total.toFixed(2)}</strong></td>
-            <td>${receipt.createdBy || '-'}</td>
+            <td data-label="تحديد"><input type="checkbox" class="receipt-select" data-id="${receipt.id}" data-type="cash"></td>
+            <td data-label="م">${baseIndex + index + 1}</td>
+            <td data-label="رقم الإيصال">${receipt.receiptNo}</td>
+            <td data-label="الاسم">${receipt.payerName}</td>
+            <td data-label="تاريخ الدفع">${formatDate(receipt.paymentDate)}</td>
+            <td data-label="الفترة من">${formatDate(receipt.periodFrom)}</td>
+            <td data-label="الفترة إلى">${formatDate(receipt.periodTo)}</td>
+            <td data-label="استبعاد">${receipt.accounts['estabd'] || 0}</td>
+            <td data-label="أ.ه.ت">${receipt.accounts['aht'] || 0}</td>
+            <td data-label="ص.تأمين">${receipt.accounts['sandog_tamen'] || 0}</td>
+            <td data-label="و.مركبات">${receipt.accounts['wheda_markabat'] || 0}</td>
+            <td data-label="ن.عاملين">${receipt.accounts['nogaba'] || 0}</td>
+            <td data-label="التأمينات">${receipt.accounts['tamenat'] || 0}</td>
+            <td data-label="الإجمالي"><strong>${receipt.total.toFixed(2)}</strong></td>
+            <td data-label="مدخل البيان">${receipt.createdBy || '-'}</td>
         `;
         tbody.appendChild(row);
     });
@@ -947,7 +947,7 @@ function renderUnjustifiedDatabasePage(payments) {
         
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>
+            <td data-label="إجراء">
                 <div class="action-btns">
                     <button class="action-btn print" onclick="printReceipt(${payment.id}, 'unjustified')">
                         <i class="fas fa-print"></i>
@@ -962,14 +962,14 @@ function renderUnjustifiedDatabasePage(payments) {
                     </button>` : ''}
                 </div>
             </td>
-            <td><input type="checkbox" class="receipt-select" data-id="${payment.id}" data-type="unjustified"></td>
-            <td>${baseIndex + index + 1}</td>
-            <td>${payment.receiptNo}</td>
-            <td>${payment.name}</td>
-            <td>${formatDate(payment.paymentDate)}</td>
-            <td><strong>${(payment.amount || 0).toFixed(2)}</strong></td>
-            <td>${payment.purpose}</td>
-            <td>${payment.createdBy || '-'}</td>
+            <td data-label="تحديد"><input type="checkbox" class="receipt-select" data-id="${payment.id}" data-type="unjustified"></td>
+            <td data-label="م">${baseIndex + index + 1}</td>
+            <td data-label="رقم الإيصال">${payment.receiptNo}</td>
+            <td data-label="الاسم">${payment.name}</td>
+            <td data-label="تاريخ الدفع">${formatDate(payment.paymentDate)}</td>
+            <td data-label="المبلغ"><strong>${(payment.amount || 0).toFixed(2)}</strong></td>
+            <td data-label="الغرض">${payment.purpose}</td>
+            <td data-label="مدخل البيان">${payment.createdBy || '-'}</td>
         `;
         tbody.appendChild(row);
     });
@@ -1083,188 +1083,138 @@ function handleRestoreFile(input) {
 }
 
 // ==========================================
-// GOOGLE DRIVE BACKUP SYSTEM
+// AUTO BACKUP SYSTEM (Weekly - LocalStorage)
 // ==========================================
-const GoogleDriveBackup = {
-    CLIENT_ID: localStorage.getItem('gdrive_client_id') || '',
-    EMAIL: localStorage.getItem('gdrive_email') || '',
-    AUTO_BACKUP: localStorage.getItem('gdrive_auto_backup') === 'true',
-    TOKEN: null,
-    SCOPES: 'https://www.googleapis.com/auth/drive.file',
-    lastBackupMonth: localStorage.getItem('gdrive_last_backup_month') || '',
+const AutoBackupSystem = {
+    STORAGE_KEY: 'auto_backup_data',
+    HISTORY_KEY: 'auto_backup_history',
+    MAX_BACKUPS: 4,
+    INTERVAL_DAYS: 7,
 
-    showSettings() {
-        if (!hasPermission('backup')) {
-            notifications.warning('ليس لديك صلاحية النسخ الاحتياطي');
-            return;
-        }
-        document.getElementById('gdrive-email').value = this.EMAIL;
-        document.getElementById('gdrive-client-id').value = this.CLIENT_ID;
-        document.getElementById('gdrive-auto-backup').checked = this.AUTO_BACKUP;
-        
-        const statusEl = document.getElementById('gdrive-status');
-        if (this.TOKEN) {
-            statusEl.style.display = 'block';
-            statusEl.style.background = '#e8f5e9';
-            statusEl.style.color = '#2e7d32';
-            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> متصل بـ Google Drive بنجاح';
-        } else {
-            statusEl.style.display = 'none';
-        }
-        
-        document.getElementById('gdrive-settings-modal').classList.add('active');
-    },
-
-    saveSettings() {
-        this.EMAIL = document.getElementById('gdrive-email').value.trim();
-        this.CLIENT_ID = document.getElementById('gdrive-client-id').value.trim();
-        this.AUTO_BACKUP = document.getElementById('gdrive-auto-backup').checked;
-        
-        localStorage.setItem('gdrive_email', this.EMAIL);
-        localStorage.setItem('gdrive_client_id', this.CLIENT_ID);
-        localStorage.setItem('gdrive_auto_backup', this.AUTO_BACKUP);
-        
-        if (this.AUTO_BACKUP && this.CLIENT_ID) {
-            this.setupAutoBackup();
-        }
-        
-        notifications.success('تم حفظ إعدادات Google Drive بنجاح');
-        logAudit('gdrive_settings', 'تحديث إعدادات Google Drive', { email: this.EMAIL, autoBackup: this.AUTO_BACKUP });
-    },
-
-    async connect() {
-        const clientId = document.getElementById('gdrive-client-id').value.trim();
-        if (!clientId) {
-            notifications.warning('يجب إدخال Google Client ID أولاً');
-            return;
-        }
-        
-        this.CLIENT_ID = clientId;
-        localStorage.setItem('gdrive_client_id', clientId);
-        
+    createBackup: async function() {
+        loadingOverlay.show('جاري إنشاء النسخة الاحتياطية...');
         try {
-            const tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: this.SCOPES,
-                callback: (tokenResponse) => {
-                    this.TOKEN = tokenResponse.access_token;
-                    const statusEl = document.getElementById('gdrive-status');
-                    statusEl.style.display = 'block';
-                    statusEl.style.background = '#e8f5e9';
-                    statusEl.style.color = '#2e7d32';
-                    statusEl.innerHTML = '<i class="fas fa-check-circle"></i> تم الربط بنجاح! يمكنك الرفع الآن';
-                    notifications.success('تم الربط مع Google Drive بنجاح');
-                },
-                error_callback: (err) => {
-                    console.error('Google Auth error:', err);
-                    notifications.error('فشل في الربط مع Google: ' + (err.message || 'خطأ غير معروف'));
-                }
-            });
-            
-            tokenClient.requestAccessToken();
-        } catch (error) {
-            console.error('Google connect error:', error);
-            notifications.error('حدث خطأ في الاتصال بـ Google');
-        }
-    },
-
-    async createBackupBlob() {
-        const backupData = {
-            version: '1.0',
-            timestamp: new Date().toISOString(),
-            createdBy: currentUser ? currentUser.displayName : 'System',
-            data: {}
-        };
-
-        const paths = ['cash_receipts', 'unjustified_payments', 'names', 'users', 'audit_logs'];
-        for (const path of paths) {
-            try {
+            const backupData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                createdBy: currentUser ? currentUser.displayName : 'System',
+                data: {}
+            };
+            const paths = ['cash_receipts', 'unjustified_payments', 'names'];
+            for (const path of paths) {
                 const snapshot = await database.ref(path).once('value');
                 backupData.data[path] = snapshot.val() || {};
-            } catch (e) {
-                backupData.data[path] = {};
             }
-        }
-
-        return new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    },
-
-    async uploadNow() {
-        if (!this.TOKEN) {
-            notifications.warning('يجب الربط مع Google Drive أولاً');
-            return;
-        }
-        
-        loadingOverlay.show('جاري الرفع على Google Drive...');
-        
-        try {
-            const blob = await this.createBackupBlob();
-            const fileName = `backup_${new Date().toISOString().split('T')[0]}.json`;
-            
-            const metadata = {
-                name: fileName,
-                mimeType: 'application/json'
-            };
-
-            const form = new FormData();
-            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-            form.append('file', blob);
-
-            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + this.TOKEN
-                },
-                body: form
-            });
-
-            const result = await response.json();
-            
+            const jsonStr = JSON.stringify(backupData);
+            localStorage.setItem(this.STORAGE_KEY, jsonStr);
+            this.updateHistory(backupData.timestamp);
             loadingOverlay.hide();
-            
-            if (response.ok) {
-                notifications.success('تم رفع النسخة الاحتياطية على Google Drive بنجاح!');
-                logAudit('gdrive_backup', 'رفع نسخة احتياطية على Google Drive', { fileId: result.id, fileName });
-            } else {
-                notifications.error('فشل الرفع: ' + (result.error?.message || 'خطأ غير معروف'));
-            }
+            notifications.success('تم إنشاء النسخة الاحتياطية بنجاح!');
+            logAudit('auto_backup', 'إنشاء نسخة احتياطية تلقائية', { timestamp: backupData.timestamp });
+            return true;
         } catch (error) {
             loadingOverlay.hide();
-            console.error('Google Drive upload error:', error);
-            notifications.error('حدث خطأ أثناء الرفع: ' + error.message);
+            notifications.error('حدث خطأ أثناء إنشاء النسخة الاحتياطية: ' + error.message);
+            return false;
         }
     },
 
-    setupAutoBackup() {
-        // Check every hour if it's time for monthly backup
-        setInterval(() => {
-            if (!this.AUTO_BACKUP || !this.TOKEN) return;
-            
-            const now = new Date();
-            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            
-            if (currentMonth !== this.lastBackupMonth) {
-                console.log('Auto backup triggered for month:', currentMonth);
-                this.uploadNow().then(() => {
-                    this.lastBackupMonth = currentMonth;
-                    localStorage.setItem('gdrive_last_backup_month', currentMonth);
-                });
-            }
-        }, 3600000); // Check every hour
-        
-        // Also check immediately on page load
-        if (this.TOKEN && this.AUTO_BACKUP) {
-            const now = new Date();
-            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            if (currentMonth !== this.lastBackupMonth) {
-                setTimeout(() => {
-                    notifications.info('سيتم تنفيذ النسخ الاحتياطي التلقائي قريباً...');
-                    setTimeout(() => this.uploadNow(), 5000);
-                }, 10000);
-            }
+    downloadBackup: function() {
+        const data = localStorage.getItem(this.STORAGE_KEY);
+        if (!data) {
+            notifications.warning('لا توجد نسخة احتياطية محفوظة');
+            return;
         }
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        notifications.success('تم تحميل النسخة الاحتياطية بنجاح!');
+    },
+
+    checkBackupAge: function() {
+        const history = this.getHistory();
+        if (history.length === 0) {
+            this.showWarning('لم يتم إنشاء أي نسخة احتياطية بعد');
+            return;
+        }
+        const lastBackup = new Date(history[history.length - 1]);
+        const now = new Date();
+        const diffDays = Math.floor((now - lastBackup) / (1000 * 60 * 60 * 24));
+        if (diffDays >= this.INTERVAL_DAYS) {
+            this.showWarning(`آخر نسخة احتياطية كانت منذ ${diffDays} يوم. يُنصح بإنشاء نسخة جديدة.`);
+        } else {
+            this.hideWarning();
+        }
+    },
+
+    showWarning: function(message) {
+        let banner = document.getElementById('backup-warning-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'backup-warning-banner';
+            banner.className = 'backup-warning-banner';
+            banner.innerHTML = `
+                <div class="backup-warning-content">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="backup-warning-text"></span>
+                    <div class="backup-warning-actions">
+                        <button class="btn btn-warning btn-animated" onclick="AutoBackupSystem.createBackup().then(() => AutoBackupSystem.hideWarning())">
+                            <i class="fas fa-download"></i> إنشاء نسخة الآن
+                        </button>
+                        <button class="btn btn-secondary" onclick="AutoBackupSystem.hideWarning()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.prepend(banner);
+        }
+        document.getElementById('backup-warning-text').textContent = message;
+        banner.style.display = 'block';
+    },
+
+    hideWarning: function() {
+        const banner = document.getElementById('backup-warning-banner');
+        if (banner) banner.style.display = 'none';
+    },
+
+    updateHistory: function(timestamp) {
+        let history = this.getHistory();
+        history.push(timestamp);
+        if (history.length > this.MAX_BACKUPS) {
+            history = history.slice(-this.MAX_BACKUPS);
+        }
+        localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
+    },
+
+    getHistory: function() {
+        try {
+            return JSON.parse(localStorage.getItem(this.HISTORY_KEY)) || [];
+        } catch {
+            return [];
+        }
+    },
+
+    getBackupInfo: function() {
+        const history = this.getHistory();
+        if (history.length === 0) return null;
+        const last = new Date(history[history.length - 1]);
+        const now = new Date();
+        const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+        return {
+            lastBackupDate: last.toLocaleDateString('ar-EG'),
+            daysAgo: diffDays,
+            totalBackups: history.length,
+            isOld: diffDays >= this.INTERVAL_DAYS
+        };
     }
 };
+
+// Google Drive Backup System REMOVED
 
 // Database Keys
 const DB_KEYS = {
@@ -1640,12 +1590,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setupRealtimeListeners();
         initPagination();
         
-        // Initialize Google Drive auto-backup if configured
-        try {
-            if (typeof GoogleDriveBackup !== 'undefined' && GoogleDriveBackup.AUTO_BACKUP && GoogleDriveBackup.CLIENT_ID) {
-                GoogleDriveBackup.setupAutoBackup();
-            }
-        } catch(e) { console.log('GoogleDriveBackup not available'); }
+        // التحقق من عمر النسخة الاحتياطية
+        setTimeout(() => {
+            AutoBackupSystem.checkBackupAge();
+        }, 3000);
         
         // تحميل أسماء الأشخاص عند فتح صفحة التقرير
         const personReportsPage = document.getElementById('person-reports');
@@ -1828,6 +1776,10 @@ function setupEventListeners() {
     if (unjustifiedSearch) unjustifiedSearch.addEventListener('input', (e) => {
         liveSearch('unjustified', e.target.value);
     });
+    
+    // Keyboard navigation for search
+    setupSearchKeyboardNav('cash');
+    setupSearchKeyboardNav('unjustified');
     
     // Date Filter Buttons
     const dbFilterBtn = document.getElementById('db-filter-btn');
@@ -2199,10 +2151,6 @@ function updateButtonsByPermissions() {
     if (backupBtn) {
         backupBtn.style.display = (isAdmin || perms.includes('backup')) ? '' : 'none';
     }
-    const gdriveBtn = document.getElementById('gdrive-backup-btn');
-    if (gdriveBtn) {
-        gdriveBtn.style.display = (isAdmin || perms.includes('backup')) ? '' : 'none';
-    }
     
     const restoreBtn = document.getElementById('restore-btn');
     if (restoreBtn) {
@@ -2377,6 +2325,178 @@ function showMainPage() {
     loadUsers();
     updateNamesList();
 }
+
+// ==========================================
+// PARTICLES BACKGROUND SYSTEM
+// ==========================================
+(function() {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'particles-canvas';
+    document.body.prepend(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationId;
+    
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    
+    function createParticles() {
+        particles = [];
+        const count = Math.min(60, Math.floor((canvas.width * canvas.height) / 20000));
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: (Math.random() - 0.5) * 0.4,
+                radius: Math.random() * 2 + 1,
+                opacity: Math.random() * 0.5 + 0.2
+            });
+        }
+    }
+    
+    function drawParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            if (p.x < 0) p.x = canvas.width;
+            if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height;
+            if (p.y > canvas.height) p.y = 0;
+            
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+            ctx.fill();
+            
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = p.x - particles[j].x;
+                const dy = p.y - particles[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 120) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 * (1 - dist / 120)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        });
+        
+        animationId = requestAnimationFrame(drawParticles);
+    }
+    
+    resize();
+    createParticles();
+    drawParticles();
+    
+    window.addEventListener('resize', () => {
+        resize();
+        createParticles();
+    });
+})();
+
+// ==========================================
+// 3D TILT EFFECT ON CARDS
+// ==========================================
+(function() {
+    const cards = document.querySelectorAll('.stat-card, .chart-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            if (window.innerWidth <= 768) return;
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const rotateX = (y - centerY) / 15;
+            const rotateY = (centerX - x) / 15;
+            
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-5px)`;
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)';
+        });
+    });
+})();
+
+// ==========================================
+// SCROLL TO TOP BUTTON
+// ==========================================
+(function() {
+    const scrollBtn = document.getElementById('scroll-to-top');
+    if (!scrollBtn) return;
+    
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+            scrollBtn.classList.add('visible');
+        } else {
+            scrollBtn.classList.remove('visible');
+        }
+    });
+    
+    scrollBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+})();
+
+// ==========================================
+// MOBILE MENU TOGGLE
+// ==========================================
+(function() {
+    const toggle = document.getElementById('mobile-menu-toggle');
+    const nav = document.querySelector('.main-nav');
+    const overlay = document.getElementById('mobile-overlay');
+    if (!toggle || !nav || !overlay) return;
+    
+    function openMenu() {
+        toggle.classList.add('active');
+        nav.classList.add('open');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeMenu() {
+        toggle.classList.remove('active');
+        nav.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    
+    toggle.addEventListener('click', () => {
+        if (nav.classList.contains('open')) {
+            closeMenu();
+        } else {
+            openMenu();
+        }
+    });
+    
+    overlay.addEventListener('click', closeMenu);
+    
+    nav.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                closeMenu();
+            }
+        });
+    });
+    
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            closeMenu();
+        }
+    });
+})();
 
 // Navigation
 function navigateTo(page) {
@@ -4137,43 +4257,84 @@ function deleteReceipt(id, type) {
     });
 }
 
-// Live Search Function
+// Live Search Function - Enhanced
 let searchTimeout = null;
+let searchSelectedIndex = -1;
 
 function liveSearch(type, searchTerm) {
-    // Clear previous timeout
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    const dropdownId = type === 'cash' ? 'cash-search-dropdown' : 'unjustified-search-dropdown';
+    const dropdown = document.getElementById(dropdownId);
+    
+    if (!searchTerm || searchTerm.trim() === '') {
+        if (dropdown) {
+            dropdown.classList.remove('active');
+            dropdown.innerHTML = '';
+        }
+        loadDatabase(type);
+        return;
     }
     
-    // Set new timeout to avoid searching on every keystroke
+    searchSelectedIndex = -1;
+    
     searchTimeout = setTimeout(() => {
-        if (!searchTerm || searchTerm.trim() === '') {
-            // If search is empty, load all data
-            loadDatabase(type);
-            return;
-        }
-        
         searchTerm = searchTerm.toLowerCase().trim();
         const path = type === 'cash' ? 'cash_receipts' : 'unjustified_payments';
+        
+        if (dropdown) {
+            dropdown.innerHTML = '<div class="search-loading">جاري البحث...</div>';
+            dropdown.classList.add('active');
+        }
         
         getFromFirebase(path, (error, data) => {
             if (error) {
                 console.error('Live search error:', error);
+                if (dropdown) dropdown.classList.remove('active');
                 return;
             }
             
-            let items = [];
-            if (data) {
-                items = Object.values(data);
-            }
+            let items = data ? Object.values(data) : [];
             
             const filtered = items.filter(item => {
-                const name = type === 'cash' ? item.payerName : item.name;
+                const name = (type === 'cash' ? item.payerName : item.name) || '';
+                const receiptNo = item.receiptNo || '';
+                const amount = String(item.total || item.amount || '');
+                const purpose = item.purpose || '';
                 return name.toLowerCase().includes(searchTerm) ||
-                       item.receiptNo.toLowerCase().includes(searchTerm) ||
-                       (name.split(' ').some(word => word.toLowerCase().startsWith(searchTerm)));
+                       receiptNo.toLowerCase().includes(searchTerm) ||
+                       amount.includes(searchTerm) ||
+                       purpose.toLowerCase().includes(searchTerm) ||
+                       name.split(' ').some(word => word.toLowerCase().startsWith(searchTerm));
             });
+            
+            if (dropdown && filtered.length > 0) {
+                let html = '';
+                const maxResults = Math.min(filtered.length, 15);
+                for (let i = 0; i < maxResults; i++) {
+                    const item = filtered[i];
+                    const name = type === 'cash' ? item.payerName : item.name;
+                    const amount = type === 'cash' ? (item.total || 0).toFixed(2) : (item.amount || 0).toFixed(2);
+                    const highlightedName = highlightText(name, searchTerm);
+                    const highlightedReceipt = highlightText(item.receiptNo, searchTerm);
+                    html += `
+                        <div class="search-result-item" data-index="${i}" onclick="selectSearchResult('${type}', ${item.id})">
+                            <div>
+                                <div class="result-name">${highlightedName}</div>
+                                <div class="result-receipt">رقم الإيصال: ${highlightedReceipt}</div>
+                            </div>
+                            <div class="result-amount">${formatCurrency(parseFloat(amount))}</div>
+                        </div>`;
+                }
+                if (filtered.length > 15) {
+                    html += `<div class="search-results-count">عرض ${maxResults} من ${filtered.length} نتيجة</div>`;
+                }
+                dropdown.innerHTML = html;
+                dropdown.classList.add('active');
+            } else if (dropdown) {
+                dropdown.innerHTML = '<div class="search-results-count">لا توجد نتائج مطابقة</div>';
+                dropdown.classList.add('active');
+            }
             
             if (type === 'cash') {
                 renderCashDatabase(filtered);
@@ -4181,7 +4342,67 @@ function liveSearch(type, searchTerm) {
                 renderUnjustifiedDatabase(filtered);
             }
         });
-    }, 300); // Wait 300ms after user stops typing
+    }, 250);
+}
+
+function highlightText(text, term) {
+    if (!text || !term) return text || '';
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
+}
+
+function selectSearchResult(type, id) {
+    const dropdownId = type === 'cash' ? 'cash-search-dropdown' : 'unjustified-search-dropdown';
+    const dropdown = document.getElementById(dropdownId);
+    if (dropdown) {
+        dropdown.classList.remove('active');
+        dropdown.innerHTML = '';
+    }
+    editReceipt(id, type);
+}
+
+function setupSearchKeyboardNav(type) {
+    const inputId = type === 'cash' ? 'db-search' : 'unjustified-search';
+    const dropdownId = type === 'cash' ? 'cash-search-dropdown' : 'unjustified-search-dropdown';
+    const input = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    if (!input || !dropdown) return;
+    
+    input.addEventListener('keydown', (e) => {
+        const items = dropdown.querySelectorAll('.search-result-item');
+        if (!items.length || !dropdown.classList.contains('active')) return;
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            searchSelectedIndex = Math.min(searchSelectedIndex + 1, items.length - 1);
+            updateSearchSelection(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            searchSelectedIndex = Math.max(searchSelectedIndex - 1, 0);
+            updateSearchSelection(items);
+        } else if (e.key === 'Enter' && searchSelectedIndex >= 0) {
+            e.preventDefault();
+            items[searchSelectedIndex].click();
+        } else if (e.key === 'Escape') {
+            dropdown.classList.remove('active');
+            searchSelectedIndex = -1;
+        }
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+}
+
+function updateSearchSelection(items) {
+    items.forEach((item, i) => {
+        item.classList.toggle('selected', i === searchSelectedIndex);
+    });
+    if (searchSelectedIndex >= 0 && items[searchSelectedIndex]) {
+        items[searchSelectedIndex].scrollIntoView({ block: 'nearest' });
+    }
 }
 
 // Delete Selected
@@ -4602,62 +4823,59 @@ function executePrint() {
 }
 
 function generateCashReceiptHTML(data, isPreview) {
-    // Filter only accounts with value > 0
     const accountsWithValue = Object.entries(data.accounts)
         .filter(([name, value]) => parseFloat(value) > 0);
     
-    // If no accounts have values, show a message
     const accountsRows = accountsWithValue.length > 0 
-        ? accountsWithValue.map(([name, value]) => `
-            <tr>
-                <td style="text-align: center; padding: 6px 5px; border: 1px solid #333; font-weight: 600;">${getAccountName(name)}</td>
-                <td style="text-align: center; padding: 6px 5px; border: 1px solid #333; font-weight: 600;">${parseFloat(value).toFixed(2)}</td>
+        ? accountsWithValue.map(([name, value], idx) => `
+            <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8f9fc'};">
+                <td style="text-align: center; padding: 10px 8px; border: 1px solid #e0e0e0; font-weight: 600; font-size: 14px;">${getAccountName(name)}</td>
+                <td style="text-align: center; padding: 10px 8px; border: 1px solid #e0e0e0; font-weight: 700; font-size: 14px; color: #1a237e;">${parseFloat(value).toFixed(2)}</td>
             </tr>
         `).join('')
-        : '<tr><td colspan="2" style="text-align: center; padding: 6px 5px; border: 1px solid #333;">لا توجد بنود مسجلة</td></tr>';
+        : '<tr><td colspan="2" style="text-align: center; padding: 12px 8px; border: 1px solid #e0e0e0; color: #999;">لا توجد بنود مسجلة</td></tr>';
     
-    // Get current user name for printing
     const printedByName = currentUser ? (currentUser.displayName || currentUser.username) : (data.printedBy || '');
     
     return `
         <div class="print-receipt">
             <div class="print-receipt-header">
                 <div class="print-institution-names">
-                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخزينة</div>
+                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
                     <div class="print-title-center">
                         <h2>بيان استلام نقدية</h2>
                     </div>
-                    <div class="print-col-left" style="text-align: center; color: #1565c0; font-weight: 700; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.8;"><span>الكود المؤسسي</span><span style="font-size: 16px; font-weight: 800;">20600105</span></div>
+                    <div class="print-col-left" style="text-align: center; color: #1a237e; font-weight: 700; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.8;"><span>الكود المؤسسي</span><span style="font-size: 18px; font-weight: 800;">20600105</span></div>
                 </div>
             </div>
             
             <div class="print-receipt-body">
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">رقم الإيصال &nbsp;/&nbsp; الإشعار:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">${data.receiptNo}</span>
+                <div class="print-row">
+                    <span class="print-label">رقم الإيصال &nbsp;/&nbsp; الإشعار:</span>
+                    <span class="print-value">${data.receiptNo}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">الاسم:</span>
-                    <span class="print-value" style="font-weight: 700; font-size: 16px; text-align: right; margin-right: 20px;">${data.payerName}</span>
+                <div class="print-row">
+                    <span class="print-label">الاسم:</span>
+                    <span class="print-value large">${data.payerName}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">تاريخ الدفع:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">${formatDateToArabic(formatDate(data.paymentDate))}</span>
+                <div class="print-row">
+                    <span class="print-label">تاريخ الدفع:</span>
+                    <span class="print-value">${formatDateToArabic(formatDate(data.paymentDate))}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">الفترة:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">
+                <div class="print-row">
+                    <span class="print-label">الفترة:</span>
+                    <span class="print-value">
                         من ${formatDateToArabic(formatDate(data.periodFrom))} إلى ${formatDateToArabic(formatDate(data.periodTo))}
                     </span>
                 </div>
                 
-                <div class="print-accounts" style="margin: 15px 0; border-top: 2px solid #333; padding-top: 12px;">
-                    <h4 style="text-align: center; margin-bottom: 12px; color: #1565c0; font-size: 16px; font-weight: 700;">تفاصيل الحسابات</h4>
-                    <table class="print-accounts-table" style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px;">
+                <div class="print-accounts">
+                    <h4>تفاصيل الحسابات</h4>
+                    <table class="print-accounts-table">
                         <thead>
                             <tr>
-                                <th style="background: #f5f5f5; font-weight: 700; padding: 8px 5px; border: 1px solid #333; text-align: center;">البند</th>
-                                <th style="background: #f5f5f5; font-weight: 700; padding: 8px 5px; border: 1px solid #333; text-align: center;">المبلغ (ج.م)</th>
+                                <th>البند</th>
+                                <th>المبلغ (ج.م)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -4666,35 +4884,35 @@ function generateCashReceiptHTML(data, isPreview) {
                     </table>
                 </div>
                 
-                <div class="print-totals" style="margin: 10px 0; padding: 5px 0; text-align: right;">
-                    <div style="margin-bottom: 5px; font-size: 18px; font-weight: 700; color: #27ae60; text-align: right;">
-                        الإجمالي: ${data.total} ج.م
+                <div class="print-totals">
+                    <div class="print-total-row total">
+                        <span>الإجمالي: ${data.total} ج.م</span>
                     </div>
-                    <div style="font-size: 14px; font-weight: 600; color: #333; text-align: right; line-height: 1.4;">
-                        المبلغ كتابة: ${data.totalWords}
+                    <div class="print-total-row">
+                        <span>المبلغ بالحروف: ${data.totalWords}</span>
                     </div>
                 </div>
             </div>
             
-            <div class="print-receipt-footer" style="margin-top: 15px; display: flex; justify-content: space-around; padding-top: 15px; border-top: 2px solid #333;">
+            <div class="print-receipt-footer" style="border-top: none; margin-top: 15px; padding-top: 0;">
                 <div class="print-signature">
                     <p>المختص</p>
-                    <div class="line" style="width: 150px; border-top: 1px solid #333; margin: 10px auto;"></div>
+                    <div class="line"></div>
                 </div>
-                <div class="print-signature" style="text-align: center; font-size: 15px; min-width: 150px;">
-                    <p style="font-weight: 600; font-size: 15px; margin: 0 0 10px 0;">رئيس الخزينة</p>
-                    <div class="line" style="width: 150px; border-top: 1px solid #333; margin: 10px auto;"></div>
+                <div class="print-signature">
+                    <p>رئيس الخــــــــزينـــــــــة</p>
+                    <div class="line"></div>
                 </div>
-                <div class="print-signature" style="text-align: center; font-size: 15px; min-width: 150px;">
-                    <p style="font-weight: 600; font-size: 15px; margin: 0 0 10px 0;">أمين الكلية</p>
-                    <div class="line" style="width: 150px; border-top: 1px solid #333; margin: 10px auto;"></div>
+                <div class="print-signature">
+                    <p>أمين الكلية</p>
+                    <div class="line"></div>
                 </div>
             </div>
             
-            <div class="print-page-footer" style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #333;">
-                <div class="print-footer-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600;">
-                    <div class="print-form-code" style="text-align: left; font-family: monospace; font-size: 13px; color: #333;">DEN-FIA-01-FM-01</div>
-                    <div class="print-by-user" style="text-align: right; font-size: 13px;">تم الطباعة بواسطة: ${printedByName}</div>
+            <div class="print-page-footer">
+                <div class="print-footer-row">
+                    <div class="print-form-code">DEN-FIA-01-FM-01</div>
+                    <div class="print-by-user">تم الطباعة بواسطة: ${printedByName}</div>
                 </div>
             </div>
         </div>
@@ -4702,71 +4920,68 @@ function generateCashReceiptHTML(data, isPreview) {
 }
 
 function generateUnjustifiedReceiptHTML(data, isPreview) {
-    // Get current user name for printing
     const printedByName = currentUser ? (currentUser.displayName || currentUser.username) : (data.printedBy || '');
-    
-    // Format amount display
     const amountDisplay = data.amount ? parseFloat(data.amount).toFixed(2) : '0.00';
     const amountWordsDisplay = data.amountWords || '';
     
     return `
-        <div class="print-receipt">
-            <div class="print-receipt-header">
+        <div class="print-receipt" style="border-color: #b71c1c;">
+            <div class="print-receipt-header" style="border-bottom-color: #b71c1c;">
                 <div class="print-institution-names">
-                    <div class="print-uni-right">جامعة المنصورة<br>كلية طب الأسنان<br>الخزينة</div>
+                    <div class="print-uni-right" style="color: #b71c1c;">جامعة المنصورة<br>كلية طب الأسنان<br>الخــــــــزينـــــــــة</div>
                     <div class="print-title-center">
-                        <h2>مبالغ صرفت بدون وجه حق</h2>
+                        <h2 style="color: #b71c1c; border-color: #b71c1c;">مبالغ صرفت بدون وجه حق</h2>
                     </div>
-                    <div class="print-col-left" style="text-align: center; color: #1565c0; font-weight: 700; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.8;"><span>الكود المؤسسي</span><span style="font-size: 16px; font-weight: 800;">20600105</span></div>
+                    <div class="print-col-left" style="text-align: center; color: #b71c1c; font-weight: 700; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.8;"><span>الكود المؤسسي</span><span style="font-size: 18px; font-weight: 800;">20600105</span></div>
                 </div>
             </div>
             
             <div class="print-receipt-body">
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">رقم الإيصال &nbsp;/&nbsp; الإشعار:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">${data.receiptNo}</span>
+                <div class="print-row">
+                    <span class="print-label" style="color: #b71c1c;">رقم الإيصال &nbsp;/&nbsp; الإشعار:</span>
+                    <span class="print-value">${data.receiptNo}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">الاسم:</span>
-                    <span class="print-value" style="font-weight: 700; font-size: 16px; text-align: right; margin-right: 20px;">${data.name}</span>
+                <div class="print-row">
+                    <span class="print-label" style="color: #b71c1c;">الاسم:</span>
+                    <span class="print-value large">${data.name}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">تاريخ الدفع:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">${formatDateToArabic(formatDate(data.paymentDate))}</span>
+                <div class="print-row">
+                    <span class="print-label" style="color: #b71c1c;">تاريخ الدفع:</span>
+                    <span class="print-value">${formatDateToArabic(formatDate(data.paymentDate))}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">المبلغ:</span>
-                    <span class="print-value" style="font-weight: 700; font-size: 20px; color: #27ae60; text-align: right; margin-right: 20px;">${amountDisplay} ج.م</span>
+                <div class="print-row">
+                    <span class="print-label" style="color: #b71c1c;">المبلغ:</span>
+                    <span class="print-value large" style="color: #b71c1c;">${amountDisplay} ج.م</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">المبلغ كتابة:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">${amountWordsDisplay}</span>
+                <div class="print-row">
+                    <span class="print-label" style="color: #b71c1c;">المبلغ بالحروف:</span>
+                    <span class="print-value">${amountWordsDisplay}</span>
                 </div>
-                <div class="print-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dotted #95a5a6; margin-bottom: 10px;">
-                    <span class="print-label" style="font-weight: 700; color: #1565c0; font-size: 15px;">الغرض:</span>
-                    <span class="print-value" style="font-weight: 600; font-size: 15px; text-align: right; margin-right: 20px;">${data.purpose}</span>
-                </div>
-            </div>
-            
-            <div class="print-receipt-footer" style="margin-top: 15px; display: flex; justify-content: space-around; padding-top: 15px; border-top: 2px solid #333;">
-                <div class="print-signature" style="text-align: center; font-size: 15px; min-width: 150px;">
-                    <p style="font-weight: 600; font-size: 15px; margin: 0 0 10px 0;">المختص</p>
-                    <div class="line" style="width: 150px; border-top: 1px solid #333; margin: 10px auto;"></div>
-                </div>
-                <div class="print-signature" style="text-align: center; font-size: 15px; min-width: 150px;">
-                    <p style="font-weight: 600; font-size: 15px; margin: 0 0 10px 0;">رئيس الخزينة</p>
-                    <div class="line" style="width: 150px; border-top: 1px solid #333; margin: 10px auto;"></div>
-                </div>
-                <div class="print-signature" style="text-align: center; font-size: 15px; min-width: 150px;">
-                    <p style="font-weight: 600; font-size: 15px; margin: 0 0 10px 0;">أمين الكلية</p>
-                    <div class="line" style="width: 150px; border-top: 1px solid #333; margin: 10px auto;"></div>
+                <div class="print-row">
+                    <span class="print-label" style="color: #b71c1c;">الغرض:</span>
+                    <span class="print-value">${data.purpose}</span>
                 </div>
             </div>
             
-            <div class="print-page-footer" style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #333;">
-                <div class="print-footer-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600;">
-                    <div class="print-form-code" style="text-align: left; font-family: monospace; font-size: 13px; color: #333;">DEN-FIA-01-FM-01</div>
-                    <div class="print-by-user" style="text-align: right; font-size: 13px;">تم الطباعة بواسطة: ${printedByName}</div>
+            <div class="print-receipt-footer" style="border-top: none; margin-top: 15px; padding-top: 0;">
+                <div class="print-signature">
+                    <p style="color: #b71c1c;">المختص</p>
+                    <div class="line"></div>
+                </div>
+                <div class="print-signature">
+                    <p style="color: #b71c1c;">رئيس الخــــــــزينـــــــــة</p>
+                    <div class="line"></div>
+                </div>
+                <div class="print-signature">
+                    <p style="color: #b71c1c;">أمين الكلية</p>
+                    <div class="line"></div>
+                </div>
+            </div>
+            
+            <div class="print-page-footer" style="border-top-color: #b71c1c;">
+                <div class="print-footer-row">
+                    <div class="print-form-code">DEN-FIA-01-FM-01</div>
+                    <div class="print-by-user">تم الطباعة بواسطة: ${printedByName}</div>
                 </div>
             </div>
         </div>
@@ -4849,49 +5064,113 @@ function getPrintCSS() {
     return `
         @page { size: A4; margin: 10mm; }
         html, body { margin: 0; padding: 0; min-height: 100%; }
-        body { font-family: 'Tajawal', 'Cairo', sans-serif; margin: 0; padding: 10px 0; background: white; }
+        body { font-family: 'Cairo', 'Tajawal', sans-serif; margin: 0; padding: 10px 0; background: white; }
         body::before {
             content: "";
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
+            background-image: url('watermark.png');
             background-repeat: no-repeat;
             background-position: center;
             background-size: 75%;
-            opacity: 0.15;
+            opacity: 0.12;
             z-index: -1;
             pointer-events: none;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .print-receipt { background: transparent; padding: 20px; border: 2px solid #333; margin: 0 auto 15px auto; max-width: 800px; position: relative; page-break-inside: avoid; }
-        .print-receipt-header { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 3px double #333; }
-        .print-institution-names { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .print-uni-right { font-size: 16px; font-weight: 700; color: #1565c0; text-align: center; flex: 1; }
-        .print-col-left { font-size: 16px; font-weight: 700; color: #1565c0; text-align: left; flex: 1; }
+        .print-receipt {
+            background: white;
+            padding: 30px 40px;
+            border: 2px solid #1a237e;
+            max-width: 800px;
+            margin: 0 auto 20px auto;
+            position: relative;
+            page-break-inside: avoid;
+            border-radius: 4px;
+            font-family: 'Cairo', 'Tajawal', sans-serif;
+            text-align: right;
+        }
+        .print-receipt-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px double #1a237e;
+        }
+        .print-institution-names {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .print-uni-right {
+            font-family: 'Noto Naskh Arabic', serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a237e;
+            text-align: right;
+            flex: 1;
+            line-height: 1.8;
+        }
+        .print-col-left {
+            font-family: 'Noto Naskh Arabic', serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a237e;
+            text-align: left;
+            flex: 1;
+        }
         .print-title-center { text-align: center; flex: 2; }
-        .print-receipt-header h2 { color: #1565c0; font-size: 22px; margin: 5px 0; font-weight: 700; border: 2px solid #1565c0; padding: 8px 25px; border-radius: 8px; display: inline-block; }
-        .print-receipt-body { margin: 20px 0; }
-        .print-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding: 8px 0; border-bottom: 1px dotted #95a5a6; font-size: 15px; align-items: center; }
-        .print-label { font-weight: 700; color: #1565c0; min-width: 200px; font-size: 15px; }
-        .print-value { font-weight: 600; flex: 1; font-size: 15px; text-align: right; margin-right: 20px; }
+        .print-receipt-header h2 {
+            color: #1a237e;
+            font-size: 22px;
+            margin: 5px 0;
+            font-weight: 700;
+            border: 2px solid #1a237e;
+            padding: 8px 25px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        .print-receipt-body { margin: 30px 0; }
+        .print-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 10px 0;
+            border-bottom: 1px dotted #90a4ae;
+            font-size: 15px;
+            align-items: center;
+        }
+        .print-label { font-weight: 700; color: #1a237e; min-width: 200px; font-size: 15px; }
+        .print-value { font-weight: 600; flex: 1; font-size: 15px; text-align: right; padding-right: 10px; }
         .print-value.large { font-size: 16px; font-weight: 700; }
-        .print-accounts { margin: 15px 0; border-top: 2px solid #333; padding-top: 12px; }
-        .print-accounts h4 { text-align: center; margin-bottom: 12px; color: #1565c0; font-size: 16px; font-weight: 700; }
-        .print-accounts-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
-        .print-accounts-table th, .print-accounts-table td { border: 1px solid #333; padding: 6px 5px; text-align: center; }
-        .print-accounts-table th { background: #f5f5f5; font-weight: 700; font-size: 14px; }
-        .print-accounts-table td { font-weight: 600; }
-        .print-totals { margin: 10px 0; padding: 5px 0; text-align: right; }
-        .print-receipt-footer { margin-top: 15px; display: flex; justify-content: space-around; padding-top: 15px; border-top: 2px solid #333; }
-        .print-signature { text-align: center; min-width: 150px; font-size: 15px; }
-        .print-signature p { font-weight: 600; font-size: 15px; margin: 0 0 10px 0; }
-        .print-signature .line { width: 150px; border-top: 1px solid #333; margin: 10px auto; }
-        .print-page-footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #333; }
+        .print-accounts { margin: 20px 0; border-top: 2px solid #1a237e; padding-top: 15px; }
+        .print-accounts h4 { text-align: center; margin-bottom: 15px; color: #1a237e; font-size: 18px; font-weight: 700; }
+        .print-accounts-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 15px; border: 2px solid #1a237e; }
+        .print-accounts-table th {
+            background: linear-gradient(135deg, #1a237e, #283593);
+            color: white;
+            font-weight: 700;
+            padding: 10px 8px;
+            border: 1px solid #1a237e;
+            text-align: center;
+            font-size: 15px;
+        }
+        .print-accounts-table td { border: 1px solid #e0e0e0; padding: 10px 8px; text-align: center; font-weight: 600; }
+        .print-accounts-table tbody tr:nth-child(even) { background: #f8f9fc; }
+        .print-totals { margin: 20px 0; padding: 15px 0; border-top: 2px solid #1a237e; text-align: right; direction: rtl; }
+        .print-total-row { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; font-size: 16px; gap: 10px; direction: rtl; }
+        .print-total-row.total { font-size: 20px; font-weight: 700; color: #2e7d32; margin-bottom: 5px; }
+        .print-receipt-footer { margin-top: 15px; display: flex; justify-content: space-around; padding-top: 0; border-top: none; }
+        .print-signature { text-align: center; font-size: 15px; min-width: 150px; }
+        .print-signature p { font-weight: 700; font-size: 15px; margin: 0 0 15px 0; color: #1a237e; }
+        .print-signature .line { width: 160px; border-top: 2px solid #333; margin: 0 auto; }
+        .print-page-footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #1a237e; }
         .print-footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
-        .print-form-code { font-family: monospace; font-size: 13px; color: #333; }
-        .print-by-user { font-size: 13px; font-weight: 600; }
-        @media print { body { padding: 0; } .print-receipt { border: none; } }
+        .print-form-code { font-family: monospace; font-size: 12px; color: #666; }
+        .print-by-user { font-size: 13px; font-weight: 600; color: #555; }
+        @media print { body { padding: 0; } .print-receipt { border: 2px solid #1a237e; } }
     `;
 }
 
@@ -6202,37 +6481,26 @@ function validateAtLeastOneAccount() {
 function formatDateToArabic(dateString) {
     if (!dateString || dateString === '-') return '-';
     
-    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const arabicMonths = [
-        'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
-        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-    ];
-    
-    // Parse DD/MM/YYYY format
     const parts = dateString.split('/');
     if (parts.length === 3) {
-        const day = parts[0];
-        const month = parseInt(parts[1], 10) - 1;
-        const year = parts[2];
-        
-        // Convert to Arabic digits
-        const arabicDay = day.split('').map(d => arabicDigits[parseInt(d)] || d).join('');
-        const arabicYear = year.split('').map(d => arabicDigits[parseInt(d)] || d).join('');
-        
-        return `${arabicDay} ${arabicMonths[month]} ${arabicYear}`;
+        if (parts[0].length === 4) {
+            // Already YYYY/MM/DD — return as is
+            return dateString;
+        } else {
+            // DD/MM/YYYY → convert to YYYY/MM/DD
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}/${month}/${day}`;
+        }
     }
     
-    // If it's a Date object or ISO string
     const date = new Date(dateString);
     if (!isNaN(date.getTime())) {
         const day = date.getDate().toString().padStart(2, '0');
-        const month = date.getMonth();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear();
-        
-        const arabicDay = day.split('').map(d => arabicDigits[parseInt(d)] || d).join('');
-        const arabicYear = year.toString().split('').map(d => arabicDigits[parseInt(d)] || d).join('');
-        
-        return `${arabicDay} ${arabicMonths[month]} ${arabicYear}`;
+        return `${year}/${month}/${day}`;
     }
     
     return dateString;

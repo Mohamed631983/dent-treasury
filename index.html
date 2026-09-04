@@ -8,8 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://apis.google.com/js/api.js" defer></script>
-    <script src="https://accounts.google.com/gsi/client" defer></script>
+    <!-- Google APIs removed -->
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -27,6 +26,17 @@
 <div class="animated-bg-orb orb-1"></div>
 <div class="animated-bg-orb orb-2"></div>
 <div class="animated-bg-orb orb-3"></div>
+
+<!-- Mobile Menu Toggle -->
+<button class="mobile-menu-toggle" id="mobile-menu-toggle">
+    <span class="hamburger"></span>
+</button>
+<div class="mobile-overlay" id="mobile-overlay"></div>
+
+<!-- Scroll to Top Button -->
+<button class="scroll-to-top" id="scroll-to-top" title="العودة للأعلى">
+    <i class="fas fa-chevron-up"></i>
+</button>
 
 <!-- Dark Mode Toggle Button (Hidden) -->
 <button class="theme-toggle" id="theme-toggle" title="تبديل المظهر" style="display: none;">
@@ -538,8 +548,9 @@
                     <h3>قاعدة البيانات - بيانات الاستلام النقدي</h3>
                     
                     <div class="db-controls">
-                        <div class="search-box">
-                            <input type="text" id="db-search" placeholder="البحث بالاسم أو رقم الإيصال...">
+                        <div class="search-box" style="position:relative;">
+                            <input type="text" id="db-search" placeholder="البحث بالاسم أو رقم الإيصال أو المبلغ...">
+                            <div id="cash-search-dropdown" class="search-results-dropdown"></div>
                             <button class="btn btn-primary btn-animated" id="db-search-btn">
                                 <i class="fas fa-search"></i>
                             </button>
@@ -574,9 +585,7 @@
                             <button class="btn btn-warning btn-animated" id="backup-btn" onclick="BackupSystem.createBackup()">
                                 <i class="fas fa-download"></i> نسخ احتياطي
                             </button>
-                            <button class="btn btn-success btn-animated" id="gdrive-backup-btn" onclick="GoogleDriveBackup.showSettings()">
-                                <i class="fab fa-google-drive"></i> رفع على Drive
-                            </button>
+
                             <button class="btn btn-secondary btn-animated" id="restore-btn" onclick="document.getElementById('restore-file').click()">
                                 <i class="fas fa-upload"></i> استعادة
                             </button>
@@ -630,8 +639,9 @@
                     <h3>قاعدة البيانات - مبالغ صرفت بدون وجه حق</h3>
                     
                     <div class="db-controls">
-                        <div class="search-box">
-                            <input type="text" id="unjustified-search" placeholder="البحث بالاسم أو رقم الإيصال...">
+                        <div class="search-box" style="position:relative;">
+                            <input type="text" id="unjustified-search" placeholder="البحث بالاسم أو رقم الإيصال أو المبلغ...">
+                            <div id="unjustified-search-dropdown" class="search-results-dropdown"></div>
                             <button class="btn btn-primary" id="unjustified-search-btn">
                                 <i class="fas fa-search"></i>
                             </button>
@@ -965,39 +975,7 @@
         </div>
     </div>
 
-    <!-- Google Drive Backup Settings Modal -->
-    <div id="gdrive-settings-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fab fa-google-drive"></i> إعدادات النسخ الاحتياطي على Google Drive</h3>
-                <button class="close-modal" onclick="closeAllModals()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 20px;">
-                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">البريد الإلكتروني لحساب Google Drive:</label>
-                    <input type="email" id="gdrive-email" placeholder="example@gmail.com" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-                </div>
-                <div style="margin-bottom: 20px;">
-                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">Google Client ID (من Google Cloud Console):</label>
-                    <input type="text" id="gdrive-client-id" placeholder="xxxx.apps.googleusercontent.com" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-                    <small style="color: #666; margin-top: 5px; display: block;">من Google Cloud Console → APIs & Services → Credentials</small>
-                </div>
-                <div style="margin-bottom: 20px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="gdrive-auto-backup" style="width: 18px; height: 18px;">
-                        <span style="font-weight: 600;">تفعيل النسخ الاحتياطي التلقائي الشهري</span>
-                    </label>
-                </div>
-                <div id="gdrive-status" style="padding: 10px; border-radius: 6px; display: none; margin-bottom: 15px;"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-success" onclick="GoogleDriveBackup.saveSettings()"><i class="fas fa-save"></i> حفظ الإعدادات</button>
-                <button class="btn btn-primary" onclick="GoogleDriveBackup.connect()"><i class="fab fa-google"></i> ربط مع Google</button>
-                <button class="btn btn-warning" onclick="GoogleDriveBackup.uploadNow()"><i class="fas fa-cloud-upload-alt"></i> رفع الآن</button>
-                <button class="btn btn-secondary" onclick="closeAllModals()"><i class="fas fa-times"></i> إغلاق</button>
-            </div>
-        </div>
-    </div>
+    <!-- Google Drive Modal Removed -->
 
     <!-- نافذة التعديل الجماعي -->
     <div id="batch-edit-modal" class="modal">
