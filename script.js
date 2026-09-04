@@ -2790,52 +2790,272 @@ function printDashboard() {
     const content = document.getElementById('dashboard-content');
     if (!content) return;
     
-    // Convert canvas elements to images
-    const canvases = content.querySelectorAll('canvas');
-    const canvasImages = [];
-    canvases.forEach((canvas, i) => {
+    // Clone content to avoid modifying original
+    const clonedContent = content.cloneNode(true);
+    
+    // Convert canvas elements to images in the clone
+    const origCanvases = content.querySelectorAll('canvas');
+    const cloneCanvases = clonedContent.querySelectorAll('canvas');
+    
+    origCanvases.forEach((canvas, i) => {
         try {
             const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.id = 'canvas-img-' + i;
-            canvasImages.push({ canvas, img, index: i });
-            canvas.parentNode.replaceChild(img, canvas);
+            img.src = canvas.toDataURL('image/png', 1.0);
+            img.style.width = '160px';
+            img.style.height = '160px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.style.flexShrink = '0';
+            if (cloneCanvases[i]) {
+                cloneCanvases[i].parentNode.replaceChild(img, cloneCanvases[i]);
+            }
         } catch(e) {}
     });
     
+    // Remove the print button from clone
+    const printBtn = clonedContent.querySelector('#print-dashboard-btn');
+    if (printBtn) printBtn.remove();
+    
+    const dateFrom = document.getElementById('dashboard-date-from').value || '';
+    const dateTo = document.getElementById('dashboard-date-to').value || '';
+    
     const win = window.open('', '_blank');
-    win.document.write('<html><head><title>طباعة لوحة التحكم</title>');
-    win.document.write('<style>body{font-family:Tajawal,Arial,sans-serif;padding:20px;direction:rtl;text-align:right;}</style>');
-    win.document.write('<style>.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;}</style>');
-    win.document.write('<style>.stat-card{border:1px solid #ddd;border-radius:8px;padding:15px;display:flex;align-items:center;gap:12px;}</style>');
-    win.document.write('<style>.stat-icon{width:45px;height:45px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;}</style>');
-    win.document.write('<style>.stat-blue .stat-icon{background:#1565c0;}.stat-green .stat-icon{background:#2e7d32;}.stat-orange .stat-icon{background:#e65100;}.stat-red .stat-icon{background:#c62828;}</style>');
-    win.document.write('<style>.stat-number{font-size:22px;font-weight:800;color:#1565c0;}.stat-label{font-size:12px;color:#666;}</style>');
-    win.document.write('<style>.chart-card{border:1px solid #ddd;border-radius:8px;padding:15px;margin-bottom:15px;page-break-inside:avoid;}</style>');
-    win.document.write('<style>.chart-card h3{font-size:14px;color:#1565c0;border-bottom:2px solid #e3f2fd;padding-bottom:8px;margin-bottom:12px;}</style>');
-    win.document.write('<style>.recent-item{display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #f0f0f0;font-size:12px;}</style>');
-    win.document.write('<style>.accounts-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}</style>');
-    win.document.write('<style>.account-summary-item{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center;border-right:4px solid #1565c0;}</style>');
-    win.document.write('<style>.account-summary-item .acc-name{font-size:11px;color:#666;}.account-summary-item .acc-total{font-size:16px;font-weight:700;color:#1565c0;}</style>');
-    win.document.write('<style>.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;}</style>');
-    win.document.write('<style>img{max-width:100%;height:auto;}</style>');
-    win.document.write('</head><body>');
-    win.document.write('<h2 style="text-align:center;color:#1565c0;">مخطط بياني - ' + new Date().toLocaleDateString('ar-EG') + '</h2>');
-    win.document.write('<p style="text-align:center;color:#666;">من: ' + document.getElementById('dashboard-date-from').value + ' - إلي: ' + document.getElementById('dashboard-date-to').value + '</p>');
-    win.document.write(content.innerHTML);
-    win.document.write('</body></html>');
+    win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>طباعة المخطط البياني</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: 'Tajawal', Arial, sans-serif; 
+    padding: 20px; 
+    direction: rtl; 
+    color: #333;
+    background: #fff;
+    width: 100%;
+    overflow-x: hidden;
+}
+h2 { 
+    text-align: center; 
+    color: #444; 
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+.date-range {
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+.stat-card {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+}
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.stat-blue .stat-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+.stat-green .stat-icon { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+.stat-orange .stat-icon { background: linear-gradient(135deg, #fa709a, #fee140); }
+.stat-red .stat-icon { background: linear-gradient(135deg, #f5576c, #ff6a88); }
+.stat-info {
+    overflow: hidden;
+    min-width: 0;
+}
+.stat-number {
+    font-size: 18px;
+    font-weight: 800;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.stat-label {
+    font-size: 10px;
+    color: #888;
+    white-space: nowrap;
+}
+.charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.chart-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    page-break-inside: avoid;
+    overflow: hidden;
+}
+.chart-card h3 {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eee;
+}
+.chart-card.full-width { grid-column: 1 / -1; }
+.donut-chart-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    padding: 5px 0;
+    width: 100%;
+    max-width: 100%;
+}
+.donut-legend { 
+    flex: 1; 
+    min-width: 0;
+    max-width: 100%;
+}
+.donut-legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+}
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.legend-label { 
+    color: #555; 
+    flex: 1;
+}
+.legend-value { 
+    color: #333; 
+    font-weight: 700; 
+    font-size: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    direction: ltr;
+    text-align: left;
+}
+.dashboard-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.recent-list { 
+    max-height: 180px; 
+    overflow: hidden; 
+}
+.recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 11px;
+    overflow: hidden;
+    gap: 8px;
+}
+.recent-item span:first-child {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.recent-item .amount { 
+    font-weight: 700; 
+    color: #2e7d32; 
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.accounts-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.account-summary-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px 8px;
+    text-align: center;
+    overflow: visible;
+    position: relative;
+}
+.account-summary-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+.account-summary-item .acc-name { 
+    font-size: 11px; 
+    color: #666; 
+    margin-bottom: 4px;
+}
+.account-summary-item .acc-total { 
+    font-size: 15px; 
+    font-weight: 800; 
+    color: #333;
+}
+img { 
+    max-width: 160px; 
+    height: auto; 
+    display: block;
+    flex-shrink: 0;
+}
+@media print {
+    body { padding: 10px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-card { break-inside: avoid; }
+    .stat-card { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<h2>المخطط البياني</h2>
+<p class="date-range">من: ${dateFrom} - إلى: ${dateTo}</p>
+${clonedContent.innerHTML}
+</body>
+</html>`);
     win.document.close();
     
-    // Restore canvases in original page
-    canvasImages.forEach(({ canvas, img, index }) => {
-        if (img.parentNode) img.parentNode.replaceChild(canvas, img);
-    });
-    
-    win.onload = function() {
+    setTimeout(() => {
+        win.focus();
         win.print();
-    };
+    }, 600);
 }
 
 function exportDashboardPDF() {
