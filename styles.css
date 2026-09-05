@@ -2249,6 +2249,10 @@ body {
         visibility: visible;
     }
     
+    .print-receipt::before {
+        visibility: visible !important;
+    }
+    
     .print-receipt {
         position: absolute;
         left: 0;

@@ -1016,20 +1016,36 @@ const BackupSystem = {
                 backupData.data[path] = snapshot.val() || {};
             }
 
-            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            URL.revokeObjectURL(url);
+            const jsonStr = JSON.stringify(backupData, null, 2);
+            const fileName = `backup_${new Date().toISOString().split('T')[0]}.json`;
 
-            loadingOverlay.hide();
-            notifications.success('تم إنشاء النسخة الاحتياطية بنجاح!');
+            if (window.showSaveFilePicker) {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{ description: 'ملف نسخة احتياطية', accept: { 'application/json': ['.json'] } }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                loadingOverlay.hide();
+                notifications.success(`تم حفظ النسخة الاحتياطية في: ${handle.name}`);
+            } else {
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.click();
+                URL.revokeObjectURL(url);
+                loadingOverlay.hide();
+                notifications.success('تم تحميل النسخة الاحتياطية بنجاح! تحقق من مجلد التنزيلات.');
+            }
+
             logAudit('backup', 'إنشاء نسخة احتياطية', backupData);
             
         } catch (error) {
             loadingOverlay.hide();
+            if (error.name === 'AbortError') return;
             notifications.error('حدث خطأ: ' + error.message);
         }
     },
@@ -1108,31 +1124,73 @@ const AutoBackupSystem = {
             const jsonStr = JSON.stringify(backupData);
             localStorage.setItem(this.STORAGE_KEY, jsonStr);
             this.updateHistory(backupData.timestamp);
-            loadingOverlay.hide();
-            notifications.success('تم إنشاء النسخة الاحتياطية بنجاح!');
+
+            const fileName = `backup_${new Date().toISOString().split('T')[0]}.json`;
+
+            if (window.showSaveFilePicker) {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{ description: 'ملف نسخة احتياطية', accept: { 'application/json': ['.json'] } }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                loadingOverlay.hide();
+                notifications.success(`تم حفظ النسخة الاحتياطية في: ${handle.name}`);
+            } else {
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.click();
+                URL.revokeObjectURL(url);
+                loadingOverlay.hide();
+                notifications.success('تم تحميل النسخة الاحتياطية! تحقق من مجلد التنزيلات.');
+            }
+
             logAudit('auto_backup', 'إنشاء نسخة احتياطية تلقائية', { timestamp: backupData.timestamp });
             return true;
         } catch (error) {
             loadingOverlay.hide();
+            if (error.name === 'AbortError') return false;
             notifications.error('حدث خطأ أثناء إنشاء النسخة الاحتياطية: ' + error.message);
             return false;
         }
     },
 
-    downloadBackup: function() {
+    downloadBackup: async function() {
         const data = localStorage.getItem(this.STORAGE_KEY);
         if (!data) {
             notifications.warning('لا توجد نسخة احتياطية محفوظة');
             return;
         }
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-        notifications.success('تم تحميل النسخة الاحتياطية بنجاح!');
+        const fileName = `backup_${new Date().toISOString().split('T')[0]}.json`;
+
+        if (window.showSaveFilePicker) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{ description: 'ملف نسخة احتياطية', accept: { 'application/json': ['.json'] } }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(data);
+                await writable.close();
+                notifications.success(`تم حفظ النسخة الاحتياطية في: ${handle.name}`);
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                notifications.error('حدث خطأ: ' + error.message);
+            }
+        } else {
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+            notifications.success('تم تحميل النسخة الاحتياطية بنجاح!');
+        }
     },
 
     checkBackupAge: function() {
@@ -4894,7 +4952,7 @@ function generateCashReceiptHTML(data, isPreview) {
                 </div>
             </div>
             
-            <div class="print-receipt-footer" style="border-top: none; margin-top: 15px; padding-top: 0;">
+            <div class="print-receipt-footer" style="border-top: none; margin-top: 5px; padding-top: 0;">
                 <div class="print-signature">
                     <p>المختص</p>
                     <div class="line"></div>
@@ -4912,7 +4970,7 @@ function generateCashReceiptHTML(data, isPreview) {
             <div class="print-page-footer">
                 <div class="print-footer-row">
                     <div class="print-form-code">DEN-FIA-01-FM-01</div>
-                    <div class="print-by-user">تم الطباعة بواسطة: ${printedByName}</div>
+                    <div class="print-by-user">مستخرج البيان: ${printedByName}</div>
                 </div>
             </div>
         </div>
@@ -4981,7 +5039,7 @@ function generateUnjustifiedReceiptHTML(data, isPreview) {
             <div class="print-page-footer" style="border-top-color: #b71c1c;">
                 <div class="print-footer-row">
                     <div class="print-form-code">DEN-FIA-01-FM-01</div>
-                    <div class="print-by-user">تم الطباعة بواسطة: ${printedByName}</div>
+                    <div class="print-by-user">مستخرج البيان: ${printedByName}</div>
                 </div>
             </div>
         </div>
@@ -5062,39 +5120,39 @@ function printReceipt(id, type) {
 
 function getPrintCSS() {
     return `
-        @page { size: A4; margin: 10mm; }
-        html, body { margin: 0; padding: 0; min-height: 100%; }
-        body { font-family: 'Cairo', 'Tajawal', sans-serif; margin: 0; padding: 10px 0; background: white; }
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: url('watermark.png');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 75%;
-            opacity: 0.12;
-            z-index: -1;
-            pointer-events: none;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
+        @page { size: A4; margin: 8mm; }
+        html, body { margin: 0; padding: 0; }
+        body { font-family: 'Cairo', 'Tajawal', sans-serif; margin: 0; padding: 0; background: white; }
         .print-receipt {
             background: white;
-            padding: 30px 40px;
+            padding: 15px 25px;
             border: 2px solid #1a237e;
             max-width: 800px;
-            margin: 0 auto 20px auto;
+            margin: 0 auto;
             position: relative;
             page-break-inside: avoid;
             border-radius: 4px;
             font-family: 'Cairo', 'Tajawal', sans-serif;
             text-align: right;
         }
+        .print-receipt::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url('https://raw.githubusercontent.com/Mohamed631983/dent-treasury/main/watermark.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 75%;
+            opacity: 0.12;
+            z-index: 0;
+            pointer-events: none;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
         .print-receipt-header {
             text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
             border-bottom: 3px double #1a237e;
         }
         .print-institution-names {
@@ -5102,7 +5160,7 @@ function getPrintCSS() {
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .print-uni-right {
             font-family: 'Noto Naskh Arabic', serif;
@@ -5124,49 +5182,49 @@ function getPrintCSS() {
         .print-title-center { text-align: center; flex: 2; }
         .print-receipt-header h2 {
             color: #1a237e;
-            font-size: 22px;
-            margin: 5px 0;
+            font-size: 20px;
+            margin: 3px 0;
             font-weight: 700;
             border: 2px solid #1a237e;
-            padding: 8px 25px;
+            padding: 5px 20px;
             border-radius: 8px;
             display: inline-block;
         }
-        .print-receipt-body { margin: 30px 0; }
+        .print-receipt-body { margin: 10px 0; }
         .print-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 12px;
-            padding: 10px 0;
+            margin-bottom: 4px;
+            padding: 4px 0;
             border-bottom: 1px dotted #90a4ae;
-            font-size: 15px;
+            font-size: 14px;
             align-items: center;
         }
-        .print-label { font-weight: 700; color: #1a237e; min-width: 200px; font-size: 15px; }
-        .print-value { font-weight: 600; flex: 1; font-size: 15px; text-align: right; padding-right: 10px; }
-        .print-value.large { font-size: 16px; font-weight: 700; }
-        .print-accounts { margin: 20px 0; border-top: 2px solid #1a237e; padding-top: 15px; }
-        .print-accounts h4 { text-align: center; margin-bottom: 15px; color: #1a237e; font-size: 18px; font-weight: 700; }
-        .print-accounts-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 15px; border: 2px solid #1a237e; }
+        .print-label { font-weight: 700; color: #1a237e; min-width: 200px; font-size: 14px; }
+        .print-value { font-weight: 600; flex: 1; font-size: 14px; text-align: right; padding-right: 10px; }
+        .print-value.large { font-size: 15px; font-weight: 700; }
+        .print-accounts { margin: 8px 0; border-top: 2px solid #1a237e; padding-top: 8px; }
+        .print-accounts h4 { text-align: center; margin-bottom: 8px; color: #1a237e; font-size: 16px; font-weight: 700; }
+        .print-accounts-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; border: 2px solid #1a237e; }
         .print-accounts-table th {
             background: linear-gradient(135deg, #1a237e, #283593);
             color: white;
             font-weight: 700;
-            padding: 10px 8px;
+            padding: 6px 8px;
             border: 1px solid #1a237e;
             text-align: center;
-            font-size: 15px;
+            font-size: 14px;
         }
-        .print-accounts-table td { border: 1px solid #e0e0e0; padding: 10px 8px; text-align: center; font-weight: 600; }
+        .print-accounts-table td { border: 1px solid #e0e0e0; padding: 5px 8px; text-align: center; font-weight: 600; font-size: 13px; }
         .print-accounts-table tbody tr:nth-child(even) { background: #f8f9fc; }
-        .print-totals { margin: 20px 0; padding: 15px 0; border-top: 2px solid #1a237e; text-align: right; direction: rtl; }
-        .print-total-row { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; font-size: 16px; gap: 10px; direction: rtl; }
-        .print-total-row.total { font-size: 20px; font-weight: 700; color: #2e7d32; margin-bottom: 5px; }
-        .print-receipt-footer { margin-top: 15px; display: flex; justify-content: space-around; padding-top: 0; border-top: none; }
-        .print-signature { text-align: center; font-size: 15px; min-width: 150px; }
-        .print-signature p { font-weight: 700; font-size: 15px; margin: 0 0 15px 0; color: #1a237e; }
+        .print-totals { margin: 8px 0; padding: 8px 0; border-top: 2px solid #1a237e; text-align: right; direction: rtl; }
+        .print-total-row { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 4px; font-size: 14px; gap: 10px; direction: rtl; }
+        .print-total-row.total { font-size: 18px; font-weight: 700; color: #2e7d32; margin-bottom: 3px; }
+        .print-receipt-footer { margin-top: 8px; display: flex; justify-content: space-around; padding-top: 0; border-top: none; }
+        .print-signature { text-align: center; font-size: 14px; min-width: 150px; }
+        .print-signature p { font-weight: 700; font-size: 14px; margin: 0 0 8px 0; color: #1a237e; }
         .print-signature .line { width: 160px; border-top: 2px solid #333; margin: 0 auto; }
-        .print-page-footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #1a237e; }
+        .print-page-footer { margin-top: 10px; padding-top: 8px; border-top: 2px solid #1a237e; }
         .print-footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
         .print-form-code { font-family: monospace; font-size: 12px; color: #666; }
         .print-by-user { font-size: 13px; font-weight: 600; color: #555; }
